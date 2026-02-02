@@ -8,43 +8,59 @@ class Setup(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    setup_group = app_commands.Group(name="setup", description="Configure the bot for your server")
+    setup_group = app_commands.Group(name="setup", description="Configure the bot")
 
-    @setup_group.command(name="logs", description="Set the channel for audit logs")
-    @app_commands.describe(channel="The channel where logs will be sent")
-    @app_commands.checks.has_permissions(administrator=True)
-    async def logs(self, interaction: discord.Interaction, channel: discord.TextChannel):
-        update_config(interaction.guild_id, "log_channel_id", channel.id)
-        
-        embed = discord.Embed(
-            description=f"✅ **Audit Logs** will now be sent to {channel.mention}",
-            color=config.COLOR_GREEN
-        )
-        await interaction.response.send_message(embed=embed)
+    # --- 1. JOIN LOGS ---
+    @setup_group.command(name="logs_join", description="Set channel for Member Join logs")
+    async def logs_join(self, interaction: discord.Interaction, channel: discord.TextChannel):
+        update_config(interaction.guild_id, "log_join_id", channel.id)
+        await interaction.response.send_message(f"✅ **Join Logs** will be sent to {channel.mention}")
 
-    @setup_group.command(name="welcome", description="Set the channel for welcome messages")
-    @app_commands.describe(channel="The channel where welcome cards will appear")
-    @app_commands.checks.has_permissions(administrator=True)
-    async def welcome(self, interaction: discord.Interaction, channel: discord.TextChannel):
+    # --- 2. LEAVE LOGS ---
+    @setup_group.command(name="logs_leave", description="Set channel for Member Leave logs")
+    async def logs_leave(self, interaction: discord.Interaction, channel: discord.TextChannel):
+        update_config(interaction.guild_id, "log_leave_id", channel.id)
+        await interaction.response.send_message(f"✅ **Leave Logs** will be sent to {channel.mention}")
+
+    # --- 3. VC LOGS ---
+    @setup_group.command(name="logs_voice", description="Set channel for Voice Activity logs")
+    async def logs_voice(self, interaction: discord.Interaction, channel: discord.TextChannel):
+        update_config(interaction.guild_id, "log_voice_id", channel.id)
+        await interaction.response.send_message(f"✅ **Voice Logs** will be sent to {channel.mention}")
+
+    # --- 4. MESSAGE LOGS (Edit/Delete) ---
+    @setup_group.command(name="logs_messages", description="Set channel for Deleted/Edited messages")
+    async def logs_messages(self, interaction: discord.Interaction, channel: discord.TextChannel):
+        update_config(interaction.guild_id, "log_msg_id", channel.id)
+        await interaction.response.send_message(f"✅ **Message Logs** will be sent to {channel.mention}")
+
+    # --- 5. MOD LOGS (Kick/Ban/Timeout) ---
+    @setup_group.command(name="logs_mod", description="Set channel for Kicks, Bans, and Timeouts")
+    async def logs_mod(self, interaction: discord.Interaction, channel: discord.TextChannel):
+        update_config(interaction.guild_id, "log_mod_id", channel.id)
+        await interaction.response.send_message(f"✅ **Mod Logs** will be sent to {channel.mention}")
+
+    # --- STREAMER CONFIG ---
+    @setup_group.command(name="streamer_role", description="Set the Role required to trigger stream alerts")
+    async def streamer_role(self, interaction: discord.Interaction, role: discord.Role):
+        update_config(interaction.guild_id, "streamer_role_id", role.id)
+        await interaction.response.send_message(f"✅ **Streamer Role** set to {role.mention}")
+
+    @setup_group.command(name="stream_channel_normal", description="Channel for normal streamers")
+    async def stream_channel_normal(self, interaction: discord.Interaction, channel: discord.TextChannel):
+        update_config(interaction.guild_id, "stream_channel_normal", channel.id)
+        await interaction.response.send_message(f"✅ **Normal Alerts** set to {channel.mention}")
+
+    @setup_group.command(name="stream_channel_owner", description="Channel for Owner/VIP streamers")
+    async def stream_channel_owner(self, interaction: discord.Interaction, channel: discord.TextChannel):
+        update_config(interaction.guild_id, "stream_channel_owner", channel.id)
+        await interaction.response.send_message(f"✅ **Owner Alerts** set to {channel.mention}")
+
+    # --- WELCOME CONFIG ---
+    @setup_group.command(name="welcome_channel", description="Set channel for Welcome Cards")
+    async def welcome_channel(self, interaction: discord.Interaction, channel: discord.TextChannel):
         update_config(interaction.guild_id, "welcome_channel_id", channel.id)
-        
-        embed = discord.Embed(
-            description=f"✅ **Welcome Messages** will now be sent to {channel.mention}",
-            color=config.COLOR_GREEN
-        )
-        await interaction.response.send_message(embed=embed)
-
-    @setup_group.command(name="stream", description="Set the channel for stream alerts")
-    @app_commands.describe(channel="The channel where live notifications will appear")
-    @app_commands.checks.has_permissions(administrator=True)
-    async def stream(self, interaction: discord.Interaction, channel: discord.TextChannel):
-        update_config(interaction.guild_id, "stream_channel_id", channel.id)
-        
-        embed = discord.Embed(
-            description=f"✅ **Stream Alerts** will now be sent to {channel.mention}",
-            color=config.COLOR_GREEN
-        )
-        await interaction.response.send_message(embed=embed)
+        await interaction.response.send_message(f"✅ **Welcome Cards** set to {channel.mention}")
 
 async def setup(bot):
     await bot.add_cog(Setup(bot))
