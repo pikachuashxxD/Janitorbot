@@ -28,13 +28,19 @@ class Setup(commands.Cog):
         update_config(interaction.guild_id, "log_voice_id", channel.id)
         await interaction.response.send_message(f"✅ **Voice Logs** will be sent to {channel.mention}")
 
-    # --- 4. MESSAGE LOGS (Edit/Delete) ---
-    @setup_group.command(name="logs_messages", description="Set channel for Deleted/Edited messages")
-    async def logs_messages(self, interaction: discord.Interaction, channel: discord.TextChannel):
-        update_config(interaction.guild_id, "log_msg_id", channel.id)
-        await interaction.response.send_message(f"✅ **Message Logs** will be sent to {channel.mention}")
+    # --- 4. DELETE LOGS (New!) ---
+    @setup_group.command(name="logs_delete", description="Set channel for Deleted Messages")
+    async def logs_delete(self, interaction: discord.Interaction, channel: discord.TextChannel):
+        update_config(interaction.guild_id, "log_delete_id", channel.id)
+        await interaction.response.send_message(f"✅ **Delete Logs** will be sent to {channel.mention}")
 
-    # --- 5. MOD LOGS (Kick/Ban/Timeout) ---
+    # --- 5. EDIT LOGS (New!) ---
+    @setup_group.command(name="logs_edit", description="Set channel for Edited Messages")
+    async def logs_edit(self, interaction: discord.Interaction, channel: discord.TextChannel):
+        update_config(interaction.guild_id, "log_edit_id", channel.id)
+        await interaction.response.send_message(f"✅ **Edit Logs** will be sent to {channel.mention}")
+
+    # --- 6. MOD LOGS ---
     @setup_group.command(name="logs_mod", description="Set channel for Kicks, Bans, and Timeouts")
     async def logs_mod(self, interaction: discord.Interaction, channel: discord.TextChannel):
         update_config(interaction.guild_id, "log_mod_id", channel.id)
