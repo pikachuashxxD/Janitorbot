@@ -5,7 +5,8 @@ load_dotenv()
 
 # --- SECRETS ---
 TOKEN = os.getenv("DISCORD_TOKEN")
-OWNER_ID = 123456789012345678  # Replace with YOUR User ID (for debugging)
+OWNER_ID = 746366595458138183
+BOT_LOG_CHANNEL = 1468368359761645640  # Replace with YOUR User ID (for debugging)
 
 # --- VISUALS ---
 EMOJIS = {
