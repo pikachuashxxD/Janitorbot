@@ -28,12 +28,20 @@ class Logging(commands.Cog):
             days = age.days
             age_str = f"{days} days ago" if days > 0 else "Today"
 
-            embed = discord.Embed(description=f"Welcome {member.mention} to **{member.guild.name}**!", color=config.COLOR_GREEN)
+            # Added 'timestamp=now' for clean date display
+            embed = discord.Embed(
+                description=f"Welcome {member.mention} to **{member.guild.name}**!", 
+                color=config.COLOR_GREEN,
+                timestamp=now
+            )
             embed.set_author(name="Member Joined", icon_url=member.display_avatar.url)
+            
             embed.add_field(name="User", value=member.name, inline=True)
             embed.add_field(name="Account Created", value=f"{age_str}\n{discord.utils.format_dt(member.created_at, 'R')}", inline=True)
+            
             embed.set_thumbnail(url=member.display_avatar.url)
-            embed.set_footer(text=f"Member Count: {member.guild.member_count} | ID: {member.id} • {now.strftime('%m/%d/%Y %I:%M %p')}")
+            # Footer is now CLEAN: Just the IDs
+            embed.set_footer(text=f"Member Count: {member.guild.member_count} | User ID: {member.id}")
             await channel.send(embed=embed)
 
     # ====================================================
@@ -59,19 +67,29 @@ class Logging(commands.Cog):
         if is_kick:
             channel = self.get_log_channel(guild, "log_mod_id")
             if channel:
-                embed = discord.Embed(title=f"{config.EMOJIS['boot']} Member Kicked", color=config.COLOR_RED)
+                embed = discord.Embed(
+                    title=f"{config.EMOJIS['boot']} Member Kicked", 
+                    color=config.COLOR_RED,
+                    timestamp=now
+                )
                 embed.add_field(name="User", value=member.mention, inline=False)
                 embed.add_field(name="Moderator", value=kicker.mention if kicker else "Unknown", inline=True)
                 embed.add_field(name="Reason", value=reason, inline=False)
-                embed.set_footer(text=f"ID: {member.id} • {now.strftime('%m/%d/%Y %I:%M %p')}")
+                
+                embed.set_footer(text=f"User ID: {member.id}")
                 await channel.send(embed=embed)
         else:
             channel = self.get_log_channel(guild, "log_leave_id")
             if channel:
-                embed = discord.Embed(description=f"**{member.name}** has left the server.", color=config.COLOR_RED)
+                embed = discord.Embed(
+                    description=f"**{member.name}** has left the server.", 
+                    color=config.COLOR_RED,
+                    timestamp=now
+                )
                 embed.set_author(name="Member Left", icon_url=member.display_avatar.url)
                 embed.set_thumbnail(url=member.display_avatar.url)
-                embed.set_footer(text=f"Member Count: {guild.member_count} | ID: {member.id} • {now.strftime('%m/%d/%Y %I:%M %p')}")
+                
+                embed.set_footer(text=f"Member Count: {guild.member_count} | User ID: {member.id}")
                 await channel.send(embed=embed)
 
     # ====================================================
@@ -82,17 +100,24 @@ class Logging(commands.Cog):
         channel = self.get_log_channel(member.guild, "log_voice_id")
         if not channel: return
         
-        now_str = datetime.datetime.now().strftime('%m/%d/%Y %I:%M %p')
+        now = datetime.datetime.now()
 
         # JOIN
         if before.channel is None and after.channel is not None:
-            self.voice_sessions[member.id] = datetime.datetime.now()
-            embed = discord.Embed(description=f"**{member.mention} joined voice channel**", color=config.COLOR_GREEN)
+            self.voice_sessions[member.id] = now
+            
+            embed = discord.Embed(
+                description=f"**{member.mention} joined voice channel**", 
+                color=config.COLOR_GREEN,
+                timestamp=now
+            )
             embed.set_author(name="Voice Join", icon_url=member.display_avatar.url)
+            
             embed.add_field(name=f"{config.EMOJIS['voice_join']} Channel", value=after.channel.name, inline=True)
-            embed.add_field(name="Time", value=discord.utils.format_dt(datetime.datetime.now(), 't'), inline=True)
+            embed.add_field(name="Time", value=discord.utils.format_dt(now, 't'), inline=True)
+            
             embed.set_thumbnail(url=member.display_avatar.url)
-            embed.set_footer(text=f"ID: {member.id} • {now_str}")
+            embed.set_footer(text=f"User ID: {member.id}")
             await channel.send(embed=embed)
 
         # LEAVE
@@ -100,7 +125,8 @@ class Logging(commands.Cog):
             duration_str = "Unknown"
             if member.id in self.voice_sessions:
                 start_time = self.voice_sessions.pop(member.id)
-                duration = datetime.datetime.now() - start_time
+                duration = now - start_time
+                
                 total_seconds = int(duration.total_seconds())
                 hours, remainder = divmod(total_seconds, 3600)
                 minutes, seconds = divmod(remainder, 60)
@@ -112,60 +138,80 @@ class Logging(commands.Cog):
                 else:
                     duration_str = f"{seconds}s"
 
-            embed = discord.Embed(description=f"**{member.mention} left voice channel**", color=config.COLOR_RED)
+            embed = discord.Embed(
+                description=f"**{member.mention} left voice channel**", 
+                color=config.COLOR_RED,
+                timestamp=now
+            )
             embed.set_author(name="Voice Leave", icon_url=member.display_avatar.url)
+            
             embed.add_field(name=f"{config.EMOJIS['voice_leave']} Channel", value=before.channel.name, inline=True)
             embed.add_field(name="Duration", value=duration_str, inline=True)
+            
             embed.set_thumbnail(url=member.display_avatar.url)
-            embed.set_footer(text=f"ID: {member.id} • {now_str}")
+            embed.set_footer(text=f"User ID: {member.id}")
             await channel.send(embed=embed)
 
         # MOVED
         elif before.channel is not None and after.channel is not None and before.channel != after.channel:
-            embed = discord.Embed(description=f"**{member.mention} moved voice channels**", color=config.COLOR_GOLD)
+            embed = discord.Embed(
+                description=f"**{member.mention} moved voice channels**", 
+                color=config.COLOR_GOLD,
+                timestamp=now
+            )
             embed.set_author(name="Voice Moved", icon_url=member.display_avatar.url)
+            
             embed.add_field(name="From", value=before.channel.name, inline=True)
             embed.add_field(name=f"{config.EMOJIS['voice_move']} To", value=after.channel.name, inline=True)
-            embed.add_field(name="Time", value=discord.utils.format_dt(datetime.datetime.now(), 't'), inline=True)
+            embed.add_field(name="Time", value=discord.utils.format_dt(now, 't'), inline=True)
+            
             embed.set_thumbnail(url=member.display_avatar.url)
-            embed.set_footer(text=f"ID: {member.id} • {now_str}")
+            embed.set_footer(text=f"User ID: {member.id}")
             await channel.send(embed=embed)
 
     # ====================================================
-    # 4. DELETE LOGS (Separated)
+    # 4. DELETE LOGS
     # ====================================================
     @commands.Cog.listener()
     async def on_message_delete(self, message):
         if message.author.bot or not message.guild: return
-        # Now fetches "log_delete_id" specifically
         channel = self.get_log_channel(message.guild, "log_delete_id")
         now = datetime.datetime.now()
         
         if channel:
-            embed = discord.Embed(title=f"{config.EMOJIS['trash']} Message Deleted", color=config.COLOR_RED)
+            embed = discord.Embed(
+                title=f"{config.EMOJIS['trash']} Message Deleted", 
+                color=config.COLOR_RED,
+                timestamp=now
+            )
             embed.add_field(name="Author", value=message.author.mention, inline=True)
             embed.add_field(name="Channel", value=message.channel.mention, inline=True)
             content = message.content if message.content else "*[Image/Media]*"
             embed.add_field(name="Content", value=content, inline=False)
-            embed.set_footer(text=f"User ID: {message.author.id} • {now.strftime('%m/%d/%Y %I:%M %p')}")
+            
+            embed.set_footer(text=f"User ID: {message.author.id}")
             await channel.send(embed=embed)
 
     # ====================================================
-    # 5. EDIT LOGS (Separated)
+    # 5. EDIT LOGS
     # ====================================================
     @commands.Cog.listener()
     async def on_message_edit(self, before, after):
         if before.author.bot or before.content == after.content or not before.guild: return
-        # Now fetches "log_edit_id" specifically
         channel = self.get_log_channel(before.guild, "log_edit_id")
         now = datetime.datetime.now()
         
         if channel:
-            embed = discord.Embed(title=f"{config.EMOJIS['edit']} Message Edited", color=config.COLOR_BLUE)
+            embed = discord.Embed(
+                title=f"{config.EMOJIS['edit']} Message Edited", 
+                color=config.COLOR_BLUE,
+                timestamp=now
+            )
             embed.set_author(name=before.author.name, icon_url=before.author.display_avatar.url)
             embed.add_field(name="Before", value=before.content, inline=False)
             embed.add_field(name="After", value=after.content, inline=False)
-            embed.set_footer(text=f"Channel: #{before.channel.name} | User ID: {before.author.id} • {now.strftime('%m/%d/%Y %I:%M %p')}")
+            
+            embed.set_footer(text=f"Channel: #{before.channel.name} | User ID: {before.author.id}")
             await channel.send(embed=embed)
 
     # ====================================================
@@ -175,7 +221,7 @@ class Logging(commands.Cog):
     async def on_member_update(self, before, after):
         if not before.timed_out_until and after.timed_out_until:
             channel = self.get_log_channel(after.guild, "log_mod_id")
-            now_str = datetime.datetime.now().strftime('%m/%d/%Y %I:%M %p')
+            now = datetime.datetime.now()
             
             if channel:
                 moderator = "Unknown"
@@ -187,12 +233,17 @@ class Logging(commands.Cog):
                             reason = entry.reason or reason
                             break
 
-                embed = discord.Embed(title=f"{config.EMOJIS['timeout']} Timeout Update", color=config.COLOR_GOLD)
+                embed = discord.Embed(
+                    title=f"{config.EMOJIS['timeout']} Timeout Update", 
+                    color=config.COLOR_GOLD,
+                    timestamp=now
+                )
                 embed.add_field(name="User", value=after.mention, inline=False)
                 embed.add_field(name="Moderator", value=moderator, inline=True)
                 embed.add_field(name="Action", value=f"Timed out until {discord.utils.format_dt(after.timed_out_until, 'f')}", inline=True)
                 embed.add_field(name="Reason", value=reason, inline=False)
-                embed.set_footer(text=f"ID: {after.id} • {now_str}")
+                
+                embed.set_footer(text=f"User ID: {after.id}")
                 await channel.send(embed=embed)
 
 async def setup(bot):
