@@ -551,8 +551,8 @@ class ClanSystem(commands.Cog):
 
         await interaction.response.send_message(embed=embed)
 
-    # --- NEW: CLAN LIST (LEADERBOARD) ---
-    @app_commands.command(name="clan_list", description="View the top 10 clans by size")
+    # --- UPDATED: CLAN LIST (With Server Name) ---
+    @app_commands.command(name="clan_list", description="View the top 10 clans globally")
     async def clan_list(self, interaction: discord.Interaction):
         clans = load_clans()
         
@@ -564,14 +564,31 @@ class ClanSystem(commands.Cog):
         
         description = ""
         for i, clan_data in enumerate(sorted_clans[:10], 1):
-            leader_name = "Unknown"
-            # Try to fetch leader name from cache
-            leader = interaction.guild.get_member(clan_data["leader_id"])
-            if leader: leader_name = leader.display_name
+            # 1. Get Leader Name
+            leader_id = clan_data["leader_id"]
+            leader = self.bot.get_user(leader_id)
+            leader_name = leader.name if leader else f"User:{leader_id}"
             
-            description += f"**{i}. {clan_data['name']}**\n👑 Leader: {leader_name} | 👥 Members: {len(clan_data['members'])}\n\n"
+            # 2. Get Server Name
+            # We find the server by looking up the Clan Channel
+            channel_id = clan_data["channel_id"]
+            channel = self.bot.get_channel(channel_id)
+            
+            if channel:
+                server_name = channel.guild.name
+            else:
+                # If bot was kicked or channel deleted manually
+                server_name = "Unknown Server"
+
+            # 3. Format the Entry
+            description += (
+                f"**{i}. {clan_data['name']}**\n"
+                f"👑 Leader: `{leader_name}`\n"
+                f"🏠 Server: `{server_name}`\n"
+                f"👥 Members: **{len(clan_data['members'])}**\n\n"
+            )
         
-        embed = discord.Embed(title="🏆 Top Clans Leaderboard", description=description, color=discord.Color.gold())
+        embed = discord.Embed(title="🏆 Global Clan Leaderboard", description=description, color=discord.Color.gold())
         await interaction.response.send_message(embed=embed)
 
 async def setup(bot):
