@@ -9,27 +9,18 @@ OWNER_ID = 123456789012345678  # Replace with YOUR User ID (for debugging)
 
 # --- VISUALS ---
 EMOJIS = {
-    # --- Static Emojis (Backups) ---
-    "trash": "🗑️",
-    "edit": "📝",
-    "voice_join": "🟢",
-    "voice_leave": "🔴",
-    "voice_move": "🔄",
+    "trash": "<a:anim_trash:1468219314153848992>",   # Replace with your Trash ID
+    "edit": "<a:anim_edit:1468219480067805301>",     # Replace with your Edit/Pencil ID
+    "voice_join": "<a:anim_join:1468219262819631113>", # Replace with Green Join ID
+    "voice_leave": "<a:anim_leave:1468219934789337291>", # Replace with Red Leave ID
+    "voice_move": "<a:anim_move:1468222918319280256>", # Replace with Move/Swap ID
+    
+    # Static Fallbacks (Keep these just in case)
+    "timeout": "⏳",
+    "boot": "👢",
     "sparkles": "✨",
     "loading": "⏳",
-    "welcome": "👋",
-    "hammer": "🔨",
-    "boot": "👢",
-    "timeout": "⏳",
-
-    # --- Animated Emojis (Paste your IDs here!) ---
-    # Example format: "<a:emoji_name:1234567890>"
-    "anim_delete": "🗑️",     # Replace with animated trash can
-    "anim_edit": "📝",       # Replace with animated pencil
-    "anim_join": "🟢",       # Replace with animated green circle/enter
-    "anim_leave": "🔴",      # Replace with animated red circle/exit
-    "anim_move": "🔄",       # Replace with animated swap/move icon
-    "anim_alert": "🚨"       # Replace with animated alert siren
+    "welcome": "👋"
 }
 # --- COLORS ---
 COLOR_RED = 0xff0000
