@@ -62,11 +62,24 @@ class Setup(commands.Cog):
         update_config(interaction.guild_id, "stream_channel_owner", channel.id)
         await interaction.response.send_message(f"✅ **Owner Alerts** set to {channel.mention}")
 
-    # --- WELCOME CONFIG ---
+    # --- UPDATED WELCOME COMMANDS ---
+    
     @setup_group.command(name="welcome_channel", description="Set channel for Welcome Cards")
     async def welcome_channel(self, interaction: discord.Interaction, channel: discord.TextChannel):
         update_config(interaction.guild_id, "welcome_channel_id", channel.id)
         await interaction.response.send_message(f"✅ **Welcome Cards** set to {channel.mention}")
+
+    @setup_group.command(name="welcome_message", description="Set custom text for the 'Get Started' field")
+    async def welcome_message(self, interaction: discord.Interaction, message: str):
+        """
+        Example usage: 
+        /setup welcome_message message:"Read the rules in #rules and pick roles in #roles!"
+        """
+        # Save the custom string to the database
+        update_config(interaction.guild_id, "welcome_custom_text", message)
+        await interaction.response.send_message(f"✅ **Get Started Text** updated:\n> {message}")
+
+    # ... (Keep the rest of your Streamer commands here) ...
 
 async def setup(bot):
     await bot.add_cog(Setup(bot))
