@@ -3,6 +3,7 @@ from discord import app_commands
 from discord.ext import commands
 import datetime
 import traceback
+import os
 import config
 
 class Owner(commands.Cog):
@@ -13,8 +14,13 @@ class Owner(commands.Cog):
     def is_owner(self, interaction: discord.Interaction) -> bool:
         return interaction.user.id == config.OWNER_ID
 
+    def get_log_channel(self):
+        if hasattr(config, 'BOT_LOG_CHANNEL'):
+            return self.bot.get_channel(config.BOT_LOG_CHANNEL)
+        return None
+
     # ====================================================
-    # 1. SYNC COMMAND (Text Command: !sync)
+    # 1. SYNC COMMAND (!sync)
     # ====================================================
     @commands.command(name="sync")
     async def sync(self, ctx):
@@ -27,34 +33,46 @@ class Owner(commands.Cog):
             await msg.edit(content=f"❌ Sync failed: {e}")
 
     # ====================================================
-    # 2. OWNER GROUP (Slash Commands)
+    # 2. OWNER GROUP
     # ====================================================
     owner_group = app_commands.Group(name="owner", description="Bot Owner Controls")
 
-    # --- NEW: STATUS COMMAND WITH DROPDOWN ---
+    @owner_group.command(name="backup", description="📦 Create a backup of the clan database")
+    async def backup(self, interaction: discord.Interaction):
+        if not self.is_owner(interaction): return await interaction.response.send_message("❌ You are not the owner.", ephemeral=True)
+        
+        if not os.path.exists("clans.json"):
+            return await interaction.response.send_message("❌ No database file found to backup.", ephemeral=True)
+
+        channel = self.get_log_channel()
+        if not channel:
+            return await interaction.response.send_message("❌ Log channel not found in config.", ephemeral=True)
+
+        await interaction.response.send_message("✅ Sending backup to log channel...", ephemeral=True)
+        
+        # Send file
+        file = discord.File("clans.json", filename=f"backup_clans_{datetime.date.today()}.json")
+        await channel.send(content=f"📦 **Manual Backup Requested**", file=file)
+
     @owner_group.command(name="status", description="Change the bot's activity status")
     @app_commands.choices(activity_type=[
         app_commands.Choice(name="Playing", value="playing"),
         app_commands.Choice(name="Watching", value="watching"),
         app_commands.Choice(name="Listening", value="listening"),
         app_commands.Choice(name="Competing", value="competing"),
-        app_commands.Choice(name="Streaming", value="streaming")
+        app_commands.Choice(name="Streaming", value="streaming"),
+        app_commands.Choice(name="Custom (No Prefix)", value="custom")
     ])
-    @app_commands.describe(text="The text to display (e.g. Minecraft)", url="Twitch URL (Required ONLY for Streaming)")
     async def change_status(self, interaction: discord.Interaction, activity_type: app_commands.Choice[str], text: str, url: str = None):
-        if not self.is_owner(interaction): 
-            return await interaction.response.send_message("❌ You are not the owner.", ephemeral=True)
+        if not self.is_owner(interaction): return await interaction.response.send_message("❌ You are not the owner.", ephemeral=True)
 
         act_value = activity_type.value
-
-        # Handle Streaming separately because it needs a URL
         if act_value == "streaming":
-            if not url:
-                # Default URL if none provided (required for the Purple Dot to work)
-                url = "https://www.twitch.tv/discord"
+            if not url: url = "https://www.twitch.tv/discord"
             activity = discord.Streaming(name=text, url=url)
+        elif act_value == "custom":
+            activity = discord.Activity(type=discord.ActivityType.custom, name="custom", state=text)
         else:
-            # Handle standard activities
             type_map = {
                 "playing": discord.ActivityType.playing,
                 "watching": discord.ActivityType.watching,
@@ -64,25 +82,21 @@ class Owner(commands.Cog):
             activity = discord.Activity(type=type_map[act_value], name=text)
 
         await self.bot.change_presence(activity=activity)
-        await interaction.response.send_message(f"✅ Status updated: **{activity_type.name} {text}**", ephemeral=True)
-
+        await interaction.response.send_message(f"✅ Status updated.", ephemeral=True)
 
     @owner_group.command(name="servers", description="List top 10 servers by member count")
     async def servers(self, interaction: discord.Interaction):
         if not self.is_owner(interaction): return await interaction.response.send_message("❌ You are not the owner.", ephemeral=True)
-
         guilds = sorted(self.bot.guilds, key=lambda g: g.member_count, reverse=True)
         desc = ""
         for i, g in enumerate(guilds[:10], 1):
             desc += f"**{i}. {g.name}**\n👤 {g.member_count} Members | 🆔 `{g.id}`\n\n"
-
         embed = discord.Embed(title=f"🤖 Bot is in {len(self.bot.guilds)} Servers", description=desc, color=discord.Color.gold())
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
     @owner_group.command(name="leave_server", description="Force the bot to leave a server")
     async def leave_server(self, interaction: discord.Interaction, server_id: str):
         if not self.is_owner(interaction): return await interaction.response.send_message("❌ You are not the owner.", ephemeral=True)
-
         try:
             guild = self.bot.get_guild(int(server_id))
             if not guild: return await interaction.response.send_message("❌ Server not found.", ephemeral=True)
@@ -94,15 +108,9 @@ class Owner(commands.Cog):
     # ====================================================
     # 3. SYSTEM LOGGING
     # ====================================================
-    def get_log_channel(self):
-        if hasattr(config, 'BOT_LOG_CHANNEL'):
-            return self.bot.get_channel(config.BOT_LOG_CHANNEL)
-        return None
-
     async def on_app_command_error(self, interaction: discord.Interaction, error: app_commands.AppCommandError):
         if not interaction.response.is_done():
             await interaction.response.send_message("❌ An error occurred.", ephemeral=True)
-
         channel = self.get_log_channel()
         if channel:
             embed = discord.Embed(title="⚠️ Bot Error", color=discord.Color.red(), timestamp=datetime.datetime.now())
