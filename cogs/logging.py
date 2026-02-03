@@ -17,7 +17,7 @@ class Logging(commands.Cog):
         return None
 
     # ====================================================
-    # 1. JOIN LOGS (Big Picture + Animated Emoji)
+    # 1. JOIN LOGS
     # ====================================================
     @commands.Cog.listener()
     async def on_member_join(self, member):
@@ -29,14 +29,11 @@ class Logging(commands.Cog):
             age_str = f"{days} days ago" if days > 0 else "Today"
 
             embed = discord.Embed(description=f"Welcome {member.mention} to **{member.guild.name}**!", color=config.COLOR_GREEN)
-            
-            # Use Animated Emoji if available
             embed.set_author(name="Member Joined", icon_url=member.display_avatar.url)
             
             embed.add_field(name="User", value=member.name, inline=True)
             embed.add_field(name="Account Created", value=f"{age_str}\n{discord.utils.format_dt(member.created_at, 'R')}", inline=True)
             
-            # Big Picture on Right
             embed.set_thumbnail(url=member.display_avatar.url)
             embed.set_footer(text=f"Member Count: {member.guild.member_count} | ID: {member.id} • {now.strftime('%m/%d/%Y %I:%M %p')}")
             await channel.send(embed=embed)
@@ -52,7 +49,6 @@ class Logging(commands.Cog):
         kicker = None
         reason = "No reason provided"
 
-        # Check Audit Log for Kick
         if guild.me.guild_permissions.view_audit_log:
             async for entry in guild.audit_logs(limit=1, action=discord.AuditLogAction.kick):
                 if entry.target.id == member.id:
@@ -63,7 +59,6 @@ class Logging(commands.Cog):
                     break
         
         if is_kick:
-            # Kick Log (Compact Style - Red)
             channel = self.get_log_channel(guild, "log_mod_id")
             if channel:
                 embed = discord.Embed(title=f"{config.EMOJIS['boot']} Member Kicked", color=config.COLOR_RED)
@@ -73,19 +68,16 @@ class Logging(commands.Cog):
                 embed.set_footer(text=f"ID: {member.id} • {now.strftime('%m/%d/%Y %I:%M %p')}")
                 await channel.send(embed=embed)
         else:
-            # Leave Log (Big Picture Style - Red)
             channel = self.get_log_channel(guild, "log_leave_id")
             if channel:
                 embed = discord.Embed(description=f"**{member.name}** has left the server.", color=config.COLOR_RED)
                 embed.set_author(name="Member Left", icon_url=member.display_avatar.url)
-                
-                # Big Picture on Right
                 embed.set_thumbnail(url=member.display_avatar.url)
                 embed.set_footer(text=f"Member Count: {guild.member_count} | ID: {member.id} • {now.strftime('%m/%d/%Y %I:%M %p')}")
                 await channel.send(embed=embed)
 
     # ====================================================
-    # 3. VOICE LOGS (Join, Leave, Moved) - Big Pictures!
+    # 3. VOICE LOGS (Added Seconds!)
     # ====================================================
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
@@ -104,7 +96,6 @@ class Logging(commands.Cog):
             embed.add_field(name=f"{config.EMOJIS['voice_join']} Channel", value=after.channel.name, inline=True)
             embed.add_field(name="Time", value=discord.utils.format_dt(datetime.datetime.now(), 't'), inline=True)
             
-            # Big Picture
             embed.set_thumbnail(url=member.display_avatar.url)
             embed.set_footer(text=f"ID: {member.id} • {now_str}")
             await channel.send(embed=embed)
@@ -115,9 +106,18 @@ class Logging(commands.Cog):
             if member.id in self.voice_sessions:
                 start_time = self.voice_sessions.pop(member.id)
                 duration = datetime.datetime.now() - start_time
-                minutes = int(duration.total_seconds() // 60)
-                hours = minutes // 60
-                duration_str = f"{hours}h {minutes % 60}m" if hours > 0 else f"{minutes}m"
+                
+                # --- NEW DURATION LOGIC WITH SECONDS ---
+                total_seconds = int(duration.total_seconds())
+                hours, remainder = divmod(total_seconds, 3600)
+                minutes, seconds = divmod(remainder, 60)
+
+                if hours > 0:
+                    duration_str = f"{hours}h {minutes}m {seconds}s"
+                elif minutes > 0:
+                    duration_str = f"{minutes}m {seconds}s"
+                else:
+                    duration_str = f"{seconds}s"
 
             embed = discord.Embed(description=f"**{member.mention} left voice channel**", color=config.COLOR_RED)
             embed.set_author(name="Voice Leave", icon_url=member.display_avatar.url)
@@ -125,12 +125,11 @@ class Logging(commands.Cog):
             embed.add_field(name=f"{config.EMOJIS['voice_leave']} Channel", value=before.channel.name, inline=True)
             embed.add_field(name="Duration", value=duration_str, inline=True)
             
-            # Big Picture
             embed.set_thumbnail(url=member.display_avatar.url)
             embed.set_footer(text=f"ID: {member.id} • {now_str}")
             await channel.send(embed=embed)
 
-        # MOVED (New Feature!)
+        # MOVED
         elif before.channel is not None and after.channel is not None and before.channel != after.channel:
             embed = discord.Embed(description=f"**{member.mention} moved voice channels**", color=config.COLOR_GOLD)
             embed.set_author(name="Voice Moved", icon_url=member.display_avatar.url)
@@ -139,13 +138,12 @@ class Logging(commands.Cog):
             embed.add_field(name=f"{config.EMOJIS['voice_move']} To", value=after.channel.name, inline=True)
             embed.add_field(name="Time", value=discord.utils.format_dt(datetime.datetime.now(), 't'), inline=True)
             
-            # Big Picture
             embed.set_thumbnail(url=member.display_avatar.url)
             embed.set_footer(text=f"ID: {member.id} • {now_str}")
             await channel.send(embed=embed)
 
     # ====================================================
-    # 4. MESSAGE LOGS (Compact Style)
+    # 4. MESSAGE LOGS
     # ====================================================
     @commands.Cog.listener()
     async def on_message_delete(self, message):
@@ -154,7 +152,6 @@ class Logging(commands.Cog):
         now = datetime.datetime.now()
         
         if channel:
-            # Uses Animated Trash Emoji from config
             embed = discord.Embed(title=f"{config.EMOJIS['trash']} Message Deleted", color=config.COLOR_RED)
             embed.add_field(name="Author", value=message.author.mention, inline=True)
             embed.add_field(name="Channel", value=message.channel.mention, inline=True)
@@ -170,7 +167,6 @@ class Logging(commands.Cog):
         now = datetime.datetime.now()
         
         if channel:
-            # Uses Animated Edit Emoji from config
             embed = discord.Embed(title=f"{config.EMOJIS['edit']} Message Edited", color=config.COLOR_BLUE)
             embed.set_author(name=before.author.name, icon_url=before.author.display_avatar.url)
             embed.add_field(name="Before", value=before.content, inline=False)
@@ -179,7 +175,7 @@ class Logging(commands.Cog):
             await channel.send(embed=embed)
 
     # ====================================================
-    # 5. MOD LOGS (Compact Style)
+    # 5. MOD LOGS
     # ====================================================
     @commands.Cog.listener()
     async def on_member_update(self, before, after):
