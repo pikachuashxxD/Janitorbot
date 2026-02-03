@@ -9,10 +9,10 @@ OWNER_ID = 123456789012345678  # Replace with YOUR User ID (for debugging)
 
 # --- VISUALS ---
 EMOJIS = {
-    "trash": "<a:anim_trash:1468219314153848992>",   # Replace with your Trash ID
+    "trash": "<a:anim_trash:1468227963790033121>",   # Replace with your Trash ID
     "edit": "<a:anim_edit:1468219480067805301>",     # Replace with your Edit/Pencil ID
     "voice_join": "<a:anim_join:1468219262819631113>", # Replace with Green Join ID
-    "voice_leave": "<a:anim_leave:1468219934789337291>", # Replace with Red Leave ID
+    "voice_leave": "<a:anim_leave:1468229979556020285>", # Replace with Red Leave ID
     "voice_move": "<a:anim_move:1468222918319280256>", # Replace with Move/Swap ID
     
     # Static Fallbacks (Keep these just in case)
