@@ -10,43 +10,91 @@ class Setup(commands.Cog):
 
     setup_group = app_commands.Group(name="setup", description="Configure the bot")
 
-    # --- 1. JOIN LOGS ---
-    @setup_group.command(name="logs_join", description="Set channel for Member Join logs")
-    async def logs_join(self, interaction: discord.Interaction, channel: discord.TextChannel):
-        update_config(interaction.guild_id, "log_join_id", channel.id)
-        await interaction.response.send_message(f"✅ **Join Logs** will be sent to {channel.mention}")
+    # ====================================================
+    # 1. LOGS SETUP (Merged Command)
+    # ====================================================
+    @setup_group.command(name="logs", description="Set up all log channels in one command")
+    @app_commands.describe(
+        join="Channel for Member Join logs",
+        leave="Channel for Member Leave logs",
+        voice="Channel for Voice Activity (Join/Leave/Move)",
+        delete="Channel for Deleted Messages",
+        edit="Channel for Edited Messages",
+        mod="Channel for Mod Actions (Kick/Ban/Timeout)"
+    )
+    async def logs(
+        self, 
+        interaction: discord.Interaction, 
+        join: discord.TextChannel = None,
+        leave: discord.TextChannel = None,
+        voice: discord.TextChannel = None,
+        delete: discord.TextChannel = None,
+        edit: discord.TextChannel = None,
+        mod: discord.TextChannel = None
+    ):
+        """
+        Set multiple log channels at once. You only need to select the ones you want to change.
+        """
+        changes = []
 
-    # --- 2. LEAVE LOGS ---
-    @setup_group.command(name="logs_leave", description="Set channel for Member Leave logs")
-    async def logs_leave(self, interaction: discord.Interaction, channel: discord.TextChannel):
-        update_config(interaction.guild_id, "log_leave_id", channel.id)
-        await interaction.response.send_message(f"✅ **Leave Logs** will be sent to {channel.mention}")
+        if join:
+            update_config(interaction.guild_id, "log_join_id", join.id)
+            changes.append(f"✅ **Join Logs:** {join.mention}")
+        
+        if leave:
+            update_config(interaction.guild_id, "log_leave_id", leave.id)
+            changes.append(f"✅ **Leave Logs:** {leave.mention}")
 
-    # --- 3. VC LOGS ---
-    @setup_group.command(name="logs_voice", description="Set channel for Voice Activity logs")
-    async def logs_voice(self, interaction: discord.Interaction, channel: discord.TextChannel):
-        update_config(interaction.guild_id, "log_voice_id", channel.id)
-        await interaction.response.send_message(f"✅ **Voice Logs** will be sent to {channel.mention}")
+        if voice:
+            update_config(interaction.guild_id, "log_voice_id", voice.id)
+            changes.append(f"✅ **Voice Logs:** {voice.mention}")
 
-    # --- 4. DELETE LOGS (New!) ---
-    @setup_group.command(name="logs_delete", description="Set channel for Deleted Messages")
-    async def logs_delete(self, interaction: discord.Interaction, channel: discord.TextChannel):
-        update_config(interaction.guild_id, "log_delete_id", channel.id)
-        await interaction.response.send_message(f"✅ **Delete Logs** will be sent to {channel.mention}")
+        if delete:
+            update_config(interaction.guild_id, "log_delete_id", delete.id)
+            changes.append(f"✅ **Delete Logs:** {delete.mention}")
 
-    # --- 5. EDIT LOGS (New!) ---
-    @setup_group.command(name="logs_edit", description="Set channel for Edited Messages")
-    async def logs_edit(self, interaction: discord.Interaction, channel: discord.TextChannel):
-        update_config(interaction.guild_id, "log_edit_id", channel.id)
-        await interaction.response.send_message(f"✅ **Edit Logs** will be sent to {channel.mention}")
+        if edit:
+            update_config(interaction.guild_id, "log_edit_id", edit.id)
+            changes.append(f"✅ **Edit Logs:** {edit.mention}")
 
-    # --- 6. MOD LOGS ---
-    @setup_group.command(name="logs_mod", description="Set channel for Kicks, Bans, and Timeouts")
-    async def logs_mod(self, interaction: discord.Interaction, channel: discord.TextChannel):
-        update_config(interaction.guild_id, "log_mod_id", channel.id)
-        await interaction.response.send_message(f"✅ **Mod Logs** will be sent to {channel.mention}")
+        if mod:
+            update_config(interaction.guild_id, "log_mod_id", mod.id)
+            changes.append(f"✅ **Mod Logs:** {mod.mention}")
 
-    # --- STREAMER CONFIG ---
+        if changes:
+            await interaction.response.send_message("\n".join(changes))
+        else:
+            await interaction.response.send_message("❌ You didn't select any channels to setup!", ephemeral=True)
+
+    # ====================================================
+    # 2. WELCOME SETUP (Merged & Conditional)
+    # ====================================================
+    @setup_group.command(name="welcome", description="Setup Welcome Channel & Optional Message")
+    @app_commands.describe(
+        channel="Where to send the welcome card",
+        message="Custom 'Get Started' text (Leave empty to hide that section)"
+    )
+    async def welcome(self, interaction: discord.Interaction, channel: discord.TextChannel, message: str = None):
+        # 1. Save the Channel
+        update_config(interaction.guild_id, "welcome_channel_id", channel.id)
+        
+        response = f"✅ **Welcome Channel** set to {channel.mention}"
+
+        # 2. Handle the Message
+        if message:
+            # User provided text -> Save it
+            update_config(interaction.guild_id, "welcome_custom_text", message)
+            response += f"\n📝 **Custom Message set:**\n> {message}"
+        else:
+            # User left it empty -> Set to None (Hide the section)
+            update_config(interaction.guild_id, "welcome_custom_text", None)
+            response += "\n🗑️ **Custom Message cleared.** (The 'Get Started' section will be hidden)"
+
+        await interaction.response.send_message(response)
+
+    # ====================================================
+    # 3. STREAMER SETUP (Keeping as is)
+    # ====================================================
     @setup_group.command(name="streamer_role", description="Set the Role required to trigger stream alerts")
     async def streamer_role(self, interaction: discord.Interaction, role: discord.Role):
         update_config(interaction.guild_id, "streamer_role_id", role.id)
@@ -61,25 +109,6 @@ class Setup(commands.Cog):
     async def stream_channel_owner(self, interaction: discord.Interaction, channel: discord.TextChannel):
         update_config(interaction.guild_id, "stream_channel_owner", channel.id)
         await interaction.response.send_message(f"✅ **Owner Alerts** set to {channel.mention}")
-
-    # --- UPDATED WELCOME COMMANDS ---
-    
-    @setup_group.command(name="welcome_channel", description="Set channel for Welcome Cards")
-    async def welcome_channel(self, interaction: discord.Interaction, channel: discord.TextChannel):
-        update_config(interaction.guild_id, "welcome_channel_id", channel.id)
-        await interaction.response.send_message(f"✅ **Welcome Cards** set to {channel.mention}")
-
-    @setup_group.command(name="welcome_message", description="Set custom text for the 'Get Started' field")
-    async def welcome_message(self, interaction: discord.Interaction, message: str):
-        """
-        Example usage: 
-        /setup welcome_message message:"Read the rules in #rules and pick roles in #roles!"
-        """
-        # Save the custom string to the database
-        update_config(interaction.guild_id, "welcome_custom_text", message)
-        await interaction.response.send_message(f"✅ **Get Started Text** updated:\n> {message}")
-
-    # ... (Keep the rest of your Streamer commands here) ...
 
 async def setup(bot):
     await bot.add_cog(Setup(bot))

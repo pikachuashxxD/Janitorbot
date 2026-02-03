@@ -7,9 +7,7 @@ class Welcome(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    # --- Helper: Find channel by name (Smart Linking) ---
     def get_channel_mention(self, guild, possible_names):
-        """Tries to find a channel that matches one of the names in the list."""
         for name in possible_names:
             channel = discord.utils.get(guild.channels, name=name)
             if channel:
@@ -25,62 +23,41 @@ class Welcome(commands.Cog):
         channel = self.bot.get_channel(channel_id)
 
         if channel:
-            # 1. Check for Custom "Get Started" Text
-            custom_get_started = data.get("welcome_custom_text")
-            
-            # If NO custom text set, generate the default "Smart Links"
-            if not custom_get_started:
-                rules_link = self.get_channel_mention(member.guild, ["rules", "info", "server-rules"])
-                news_link = self.get_channel_mention(member.guild, ["updates", "news", "announcements"])
-                get_started_value = f"📜 **Rules:** {rules_link}\n📢 **News:** {news_link}"
-            else:
-                # Use the user's custom text
-                get_started_value = custom_get_started
-
-            # Smart Links for Gaming Zones (Keep these automatic as they are specific)
-            mc_link = self.get_channel_mention(member.guild, ["minecraft", "mc-server", "minecraft-info"])
-            steam_link = self.get_channel_mention(member.guild, ["steam-ids", "steam", "codes"])
-
-            # 2. Build Description (Matching SkiriChu Style)
+            # 1. Build Description
             description = (
                 f"We're absolutely **thrilled** to have you join the **{member.guild.name} gaming community!** 🎉\n\n"
                 "We are dedicated to providing a fun, high-performance gaming experience for everyone.\n\n"
                 "*Dive in, explore, and **most importantly** have fun!*"
             )
 
-            # Dark Embed Color
             embed = discord.Embed(description=description, color=0x2b2d31)
-
-            # 3. Author & Thumbnail
             embed.set_author(name=f"Welcome to {member.guild.name}, {member.name}!", icon_url=member.display_avatar.url)
             embed.set_thumbnail(url=member.display_avatar.url)
 
-            # 4. Fields
-            # "Get Started" (Now Customizable!)
-            embed.add_field(
-                name="🚀 Get Started", 
-                value=get_started_value, 
-                inline=False
-            )
+            # 2. CONDITIONAL "Get Started" Field
+            # Only show if user set a custom message
+            custom_msg = data.get("welcome_custom_text")
+            if custom_msg:
+                embed.add_field(name="🚀 Get Started", value=custom_msg, inline=False)
             
-            # "Gaming Zones"
+            # 3. Gaming Zones (Always show - Smart Links)
+            mc_link = self.get_channel_mention(member.guild, ["minecraft", "mc-server", "minecraft-info"])
+            steam_link = self.get_channel_mention(member.guild, ["steam-ids", "steam", "codes"])
+            
             embed.add_field(
                 name="🎮 Gaming Zones", 
                 value=f"⛏️ **Minecraft:** {mc_link}\n🚂 **Steam Codes:** {steam_link}", 
                 inline=False
             )
             
-            # "Support Us"
+            # 4. Support Us (Always show)
             embed.add_field(
                 name="📺 Support Us", 
                 value="[Subscribe to our YouTube Channel!](https://youtube.com)", 
                 inline=False
             )
 
-            # 5. Footer
             embed.set_footer(text=f"{member.guild.name} • Member #{member.guild.member_count}")
-
-            # Send Message with Mention
             await channel.send(content=f"Welcome {member.mention}! 👋", embed=embed)
 
 async def setup(bot):
