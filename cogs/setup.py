@@ -75,22 +75,42 @@ class Setup(commands.Cog):
         await interaction.response.send_message(f"✅ **Welcome Cards** set to {channel.mention}")
 
     # ====================================================
-    # 3. STREAMER SETUP
+    # 3. STREAMER SETUP (Merged Command)
     # ====================================================
-    @setup_group.command(name="streamer_role", description="Set the Role required to trigger stream alerts")
-    async def streamer_role(self, interaction: discord.Interaction, role: discord.Role):
-        update_config(interaction.guild_id, "streamer_role_id", role.id)
-        await interaction.response.send_message(f"✅ **Streamer Role** set to {role.mention}")
+    @setup_group.command(name="stream", description="Configure Streamer Alerts")
+    @app_commands.describe(
+        role="The Role required to trigger alerts (e.g. @Streamer)",
+        channel_normal="Channel where normal alerts go",
+        channel_owner="Channel where Owner/VIP alerts go"
+    )
+    async def stream(
+        self, 
+        interaction: discord.Interaction, 
+        role: discord.Role = None, 
+        channel_normal: discord.TextChannel = None, 
+        channel_owner: discord.TextChannel = None
+    ):
+        """
+        Configure all streamer settings in one command.
+        """
+        changes = []
 
-    @setup_group.command(name="stream_channel_normal", description="Channel for normal streamers")
-    async def stream_channel_normal(self, interaction: discord.Interaction, channel: discord.TextChannel):
-        update_config(interaction.guild_id, "stream_channel_normal", channel.id)
-        await interaction.response.send_message(f"✅ **Normal Alerts** set to {channel.mention}")
+        if role:
+            update_config(interaction.guild_id, "streamer_role_id", role.id)
+            changes.append(f"✅ **Streamer Role:** {role.mention}")
 
-    @setup_group.command(name="stream_channel_owner", description="Channel for Owner/VIP streamers")
-    async def stream_channel_owner(self, interaction: discord.Interaction, channel: discord.TextChannel):
-        update_config(interaction.guild_id, "stream_channel_owner", channel.id)
-        await interaction.response.send_message(f"✅ **Owner Alerts** set to {channel.mention}")
+        if channel_normal:
+            update_config(interaction.guild_id, "stream_channel_normal", channel_normal.id)
+            changes.append(f"✅ **Normal Alerts:** {channel_normal.mention}")
+
+        if channel_owner:
+            update_config(interaction.guild_id, "stream_channel_owner", channel_owner.id)
+            changes.append(f"✅ **Owner Alerts:** {channel_owner.mention}")
+
+        if changes:
+            await interaction.response.send_message("\n".join(changes))
+        else:
+            await interaction.response.send_message("❌ You didn't select any options to update!", ephemeral=True)
 
 async def setup(bot):
     await bot.add_cog(Setup(bot))

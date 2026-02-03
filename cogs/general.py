@@ -50,37 +50,34 @@ class General(commands.Cog):
                     await message.channel.send(f"💤 **{user.display_name}** is currently AFK: {reason}")
 
     # --- TEAM GENERATOR (Pika vs Skurr) ---
-    @app_commands.command(name="teams", description="Randomly split voice channel users into teams")
-    async def teams(self, interaction: discord.Interaction):
-        # check if user is in VC
-        if not interaction.user.voice or not interaction.user.voice.channel:
-            await interaction.response.send_message("❌ You must be in a Voice Channel to use this!", ephemeral=True)
+    @app_commands.command(name="teams", description="Randomly split a list of names into 2 teams")
+    @app_commands.describe(names="List of names separated by commas or spaces")
+    async def teams(self, interaction: discord.Interaction, names: str):
+        """
+        Usage: /teams names: Pika, Ash, Misty, Brock
+        """
+        # 1. Clean and split the input
+        # Replace commas with spaces to handle both formats, then split
+        player_list = [name.strip() for name in names.replace(",", " ").split() if name.strip()]
+
+        if len(player_list) < 2:
+            await interaction.response.send_message("❌ I need at least 2 names to make teams!", ephemeral=True)
             return
 
-        # Get members
-        members = interaction.user.voice.channel.members
-        if len(members) < 2:
-            await interaction.response.send_message("❌ Need at least 2 people to make teams!", ephemeral=True)
-            return
+        # 2. Shuffle
+        random.shuffle(player_list)
 
-        # Shuffle
-        random.shuffle(members)
-        
-        # Split
-        mid = len(members) // 2
-        team_pika = members[:mid]
-        team_skurr = members[mid:]
+        # 3. Split
+        midpoint = len(player_list) // 2
+        team_1 = player_list[:midpoint]
+        team_2 = player_list[midpoint:]
 
-        # Create Embed
-        embed = discord.Embed(title="⚔️ Team Generator", color=config.COLOR_GOLD)
-        
-        pika_names = "\n".join([m.mention for m in team_pika])
-        skurr_names = "\n".join([m.mention for m in team_skurr])
-
-        embed.add_field(name="⚡ Team Pika", value=pika_names if pika_names else "No one", inline=True)
-        embed.add_field(name="💀 Team Skurr", value=skurr_names if skurr_names else "No one", inline=True)
+        # 4. Display
+        embed = discord.Embed(title="⚔️ Team Generator", color=0x3498db)
+        embed.add_field(name=f"🔴 Team Red ({len(team_1)})", value="\n".join(team_1) or "None", inline=True)
+        embed.add_field(name=f"🔵 Team Blue ({len(team_2)})", value="\n".join(team_2) or "None", inline=True)
 
         await interaction.response.send_message(embed=embed)
 
 async def setup(bot):
-    await bot.add_cog(General(bot))
+    await bot.add_cog(Utils(bot))
