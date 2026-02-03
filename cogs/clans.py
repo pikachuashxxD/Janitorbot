@@ -93,14 +93,31 @@ class ClanCreationView(ui.View):
 
     @ui.button(label="❌ Reject", style=discord.ButtonStyle.red, custom_id="clan_req:reject")
     async def reject(self, interaction: discord.Interaction, button: ui.Button):
-        # Update the Request Message (Red Embed)
+        # 1. Get Data (Leader ID and Clan Name) from the Embed
+        leader_id, clan_name = await self.get_details_from_embed(interaction)
+        
+        # 2. Update the Embed (Visual Log for Admins)
         embed = interaction.message.embeds[0]
         embed.color = discord.Color.red()
         embed.title = "❌ Clan Rejected"
+        
+        # Add the "Rejected By" field
         embed.add_field(name="Rejected By", value=interaction.user.mention, inline=False)
         
+        # 3. Notify the Leader (DM)
+        leader = interaction.guild.get_member(leader_id)
+        if leader:
+            try:
+                await leader.send(
+                    f"❌ Your request to create the clan **{clan_name}** was rejected by **{interaction.user.name}**."
+                )
+            except discord.Forbidden:
+                # If bot can't DM, we just ignore it (common if user has DMs off)
+                pass
+
+        # 4. Finalize
         await interaction.message.edit(embed=embed, view=None)
-        await interaction.response.send_message("Request rejected.", ephemeral=True)
+        await interaction.response.send_message(f"Rejection sent to {leader.mention if leader else 'Unknown User'}.", ephemeral=True)
 
 
 # ======================================================
