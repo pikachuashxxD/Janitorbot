@@ -67,33 +67,15 @@ class Setup(commands.Cog):
             await interaction.response.send_message("❌ You didn't select any channels to setup!", ephemeral=True)
 
     # ====================================================
-    # 2. WELCOME SETUP (Merged & Conditional)
+    # 2. WELCOME SETUP (Simple Channel Selection)
     # ====================================================
-    @setup_group.command(name="welcome", description="Setup Welcome Channel & Optional Message")
-    @app_commands.describe(
-        channel="Where to send the welcome card",
-        message="Custom 'Get Started' text (Leave empty to hide that section)"
-    )
-    async def welcome(self, interaction: discord.Interaction, channel: discord.TextChannel, message: str = None):
-        # 1. Save the Channel
+    @setup_group.command(name="welcome", description="Set channel for Welcome Cards")
+    async def welcome(self, interaction: discord.Interaction, channel: discord.TextChannel):
         update_config(interaction.guild_id, "welcome_channel_id", channel.id)
-        
-        response = f"✅ **Welcome Channel** set to {channel.mention}"
-
-        # 2. Handle the Message
-        if message:
-            # User provided text -> Save it
-            update_config(interaction.guild_id, "welcome_custom_text", message)
-            response += f"\n📝 **Custom Message set:**\n> {message}"
-        else:
-            # User left it empty -> Set to None (Hide the section)
-            update_config(interaction.guild_id, "welcome_custom_text", None)
-            response += "\n🗑️ **Custom Message cleared.** (The 'Get Started' section will be hidden)"
-
-        await interaction.response.send_message(response)
+        await interaction.response.send_message(f"✅ **Welcome Cards** set to {channel.mention}")
 
     # ====================================================
-    # 3. STREAMER SETUP (Keeping as is)
+    # 3. STREAMER SETUP
     # ====================================================
     @setup_group.command(name="streamer_role", description="Set the Role required to trigger stream alerts")
     async def streamer_role(self, interaction: discord.Interaction, role: discord.Role):

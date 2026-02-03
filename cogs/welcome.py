@@ -7,12 +7,14 @@ class Welcome(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
+    # --- Helper: Find channel by name ---
     def get_channel_mention(self, guild, possible_names):
+        """Returns channel mention if found, otherwise returns None."""
         for name in possible_names:
             channel = discord.utils.get(guild.channels, name=name)
             if channel:
                 return channel.mention
-        return f"#{possible_names[0]}"
+        return None
 
     @commands.Cog.listener()
     async def on_member_join(self, member):
@@ -23,7 +25,29 @@ class Welcome(commands.Cog):
         channel = self.bot.get_channel(channel_id)
 
         if channel:
-            # 1. Build Description
+            # 1. Build "Get Started" Lines
+            get_started_lines = []
+            
+            rules_channel = self.get_channel_mention(member.guild, ["rules", "info", "server-rules"])
+            if rules_channel:
+                get_started_lines.append(f"📜 **Rules:** {rules_channel}")
+                
+            news_channel = self.get_channel_mention(member.guild, ["updates", "news", "announcements"])
+            if news_channel:
+                get_started_lines.append(f"📢 **News:** {news_channel}")
+
+            # 2. Build "Gaming Zones" Lines
+            gaming_lines = []
+            
+            mc_channel = self.get_channel_mention(member.guild, ["minecraft", "mc-server", "minecraft-info"])
+            if mc_channel:
+                gaming_lines.append(f"⛏️ **Minecraft:** {mc_channel}")
+                
+            steam_channel = self.get_channel_mention(member.guild, ["steam-ids", "steam", "codes"])
+            if steam_channel:
+                gaming_lines.append(f"🚂 **Steam Codes:** {steam_channel}")
+
+            # 3. Create Embed
             description = (
                 f"We're absolutely **thrilled** to have you join the **{member.guild.name} gaming community!** 🎉\n\n"
                 "We are dedicated to providing a fun, high-performance gaming experience for everyone.\n\n"
@@ -34,23 +58,14 @@ class Welcome(commands.Cog):
             embed.set_author(name=f"Welcome to {member.guild.name}, {member.name}!", icon_url=member.display_avatar.url)
             embed.set_thumbnail(url=member.display_avatar.url)
 
-            # 2. CONDITIONAL "Get Started" Field
-            # Only show if user set a custom message
-            custom_msg = data.get("welcome_custom_text")
-            if custom_msg:
-                embed.add_field(name="🚀 Get Started", value=custom_msg, inline=False)
+            # 4. Add Fields ONLY if they have content
+            if get_started_lines:
+                embed.add_field(name="🚀 Get Started", value="\n".join(get_started_lines), inline=False)
             
-            # 3. Gaming Zones (Always show - Smart Links)
-            mc_link = self.get_channel_mention(member.guild, ["minecraft", "mc-server", "minecraft-info"])
-            steam_link = self.get_channel_mention(member.guild, ["steam-ids", "steam", "codes"])
+            if gaming_lines:
+                embed.add_field(name="🎮 Gaming Zones", value="\n".join(gaming_lines), inline=False)
             
-            embed.add_field(
-                name="🎮 Gaming Zones", 
-                value=f"⛏️ **Minecraft:** {mc_link}\n🚂 **Steam Codes:** {steam_link}", 
-                inline=False
-            )
-            
-            # 4. Support Us (Always show)
+            # Support Us (Always Show)
             embed.add_field(
                 name="📺 Support Us", 
                 value="[Subscribe to our YouTube Channel!](https://youtube.com)", 
