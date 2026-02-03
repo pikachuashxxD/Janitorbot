@@ -172,7 +172,7 @@ class ClanSystem(commands.Cog):
     @app_commands.command(name="create_clan", description="Request to create a new clan")
     @app_commands.describe(name="Name of your clan", description="Short description of your clan")
     async def create_clan(self, interaction: discord.Interaction, name: str, description: str):
-        # Check permissions
+        # ... (Keep permission checks the same) ...
         conf = get_config(interaction.guild_id)
         role_id = conf.get("clan_leader_role")
         
@@ -183,7 +183,6 @@ class ClanSystem(commands.Cog):
         if role not in interaction.user.roles:
             return await interaction.response.send_message(f"❌ You need the {role.mention} role to create a clan.", ephemeral=True)
 
-        # Get Approval Channel
         approve_channel_id = conf.get("clan_approve_channel")
         clan_category_id = conf.get("clan_category")
         
@@ -192,18 +191,26 @@ class ClanSystem(commands.Cog):
 
         channel = interaction.guild.get_channel(approve_channel_id)
 
-        # Send Request
+        # --- REFINED EMBED DESIGN ---
         embed = discord.Embed(title="🛡️ New Clan Request", color=0xf1c40f)
-        embed.add_field(name="Leader", value=interaction.user.mention, inline=True)
-        embed.add_field(name="Clan Name", value=name, inline=True)
-        embed.add_field(name="Description", value=description, inline=False)
+        
+        # Add Leader's avatar as a thumbnail for a polished look
+        embed.set_thumbnail(url=interaction.user.display_avatar.url)
+        
+        # Use inline fields for a cleaner layout
+        embed.add_field(name="Clan Name", value=f"**{name}**", inline=True)
+        embed.add_field(name="Proposed Leader", value=interaction.user.mention, inline=True)
+        
+        # Description gets its own row
+        embed.add_field(name="📝 Description", value=description, inline=False)
+        
+        # Move ID to footer for a cleaner body
         embed.set_footer(text=f"Leader ID: {interaction.user.id}")
 
         view = ClanCreationView(self.bot, interaction.user, name, clan_category_id)
         await channel.send(embed=embed, view=view)
 
         await interaction.response.send_message("✅ **Request Sent!** Admins will review your application soon.", ephemeral=True)
-
     # ==========================================
     # 3. APPLY TO CLAN (Anyone)
     # ==========================================
