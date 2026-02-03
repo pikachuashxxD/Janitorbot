@@ -28,7 +28,6 @@ class Logging(commands.Cog):
             days = age.days
             age_str = f"{days} days ago" if days > 0 else "Today"
 
-            # Added 'timestamp=now' for clean date display
             embed = discord.Embed(
                 description=f"Welcome {member.mention} to **{member.guild.name}**!", 
                 color=config.COLOR_GREEN,
@@ -40,7 +39,6 @@ class Logging(commands.Cog):
             embed.add_field(name="Account Created", value=f"{age_str}\n{discord.utils.format_dt(member.created_at, 'R')}", inline=True)
             
             embed.set_thumbnail(url=member.display_avatar.url)
-            # Footer is now CLEAN: Just the IDs
             embed.set_footer(text=f"Member Count: {member.guild.member_count} | User ID: {member.id}")
             await channel.send(embed=embed)
 
@@ -88,12 +86,11 @@ class Logging(commands.Cog):
                 )
                 embed.set_author(name="Member Left", icon_url=member.display_avatar.url)
                 embed.set_thumbnail(url=member.display_avatar.url)
-                
                 embed.set_footer(text=f"Member Count: {guild.member_count} | User ID: {member.id}")
                 await channel.send(embed=embed)
 
     # ====================================================
-    # 3. VOICE LOGS
+    # 3. VOICE LOGS (Redesigned Style)
     # ====================================================
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
@@ -107,22 +104,18 @@ class Logging(commands.Cog):
             self.voice_sessions[member.id] = now
             
             embed = discord.Embed(
-                description=f"**{member.mention} joined voice channel**", 
+                title="VC Join",
+                description=f"{config.EMOJIS['voice_join']} **{member.name}** joined **{after.channel.name}**",
                 color=config.COLOR_GREEN,
                 timestamp=now
             )
-            embed.set_author(name="Voice Join", icon_url=member.display_avatar.url)
-            
-            embed.add_field(name=f"{config.EMOJIS['voice_join']} Channel", value=after.channel.name, inline=True)
-            embed.add_field(name="Time", value=discord.utils.format_dt(now, 't'), inline=True)
-            
             embed.set_thumbnail(url=member.display_avatar.url)
             embed.set_footer(text=f"User ID: {member.id}")
             await channel.send(embed=embed)
 
         # LEAVE
         elif before.channel is not None and after.channel is None:
-            duration_str = "Unknown"
+            duration_str = "0s"
             if member.id in self.voice_sessions:
                 start_time = self.voice_sessions.pop(member.id)
                 duration = now - start_time
@@ -130,24 +123,15 @@ class Logging(commands.Cog):
                 total_seconds = int(duration.total_seconds())
                 hours, remainder = divmod(total_seconds, 3600)
                 minutes, seconds = divmod(remainder, 60)
-
-                if hours > 0:
-                    duration_str = f"{hours}h {minutes}m {seconds}s"
-                elif minutes > 0:
-                    duration_str = f"{minutes}m {seconds}s"
-                else:
-                    duration_str = f"{seconds}s"
+                duration_str = f"{hours}h {minutes}m {seconds}s"
 
             embed = discord.Embed(
-                description=f"**{member.mention} left voice channel**", 
+                title="VC Leave",
+                description=f"{config.EMOJIS['voice_leave']} **{member.name}** left **{before.channel.name}**",
                 color=config.COLOR_RED,
                 timestamp=now
             )
-            embed.set_author(name="Voice Leave", icon_url=member.display_avatar.url)
-            
-            embed.add_field(name=f"{config.EMOJIS['voice_leave']} Channel", value=before.channel.name, inline=True)
-            embed.add_field(name="Duration", value=duration_str, inline=True)
-            
+            embed.add_field(name="Duration", value=duration_str, inline=False)
             embed.set_thumbnail(url=member.display_avatar.url)
             embed.set_footer(text=f"User ID: {member.id}")
             await channel.send(embed=embed)
@@ -155,16 +139,11 @@ class Logging(commands.Cog):
         # MOVED
         elif before.channel is not None and after.channel is not None and before.channel != after.channel:
             embed = discord.Embed(
-                description=f"**{member.mention} moved voice channels**", 
+                title="VC Moved",
+                description=f"{config.EMOJIS['voice_move']} **{member.name}** moved from **{before.channel.name}** to **{after.channel.name}**",
                 color=config.COLOR_GOLD,
                 timestamp=now
             )
-            embed.set_author(name="Voice Moved", icon_url=member.display_avatar.url)
-            
-            embed.add_field(name="From", value=before.channel.name, inline=True)
-            embed.add_field(name=f"{config.EMOJIS['voice_move']} To", value=after.channel.name, inline=True)
-            embed.add_field(name="Time", value=discord.utils.format_dt(now, 't'), inline=True)
-            
             embed.set_thumbnail(url=member.display_avatar.url)
             embed.set_footer(text=f"User ID: {member.id}")
             await channel.send(embed=embed)
