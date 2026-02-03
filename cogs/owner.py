@@ -8,24 +8,17 @@ import config
 class Owner(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        # Listen for errors globally
         self.bot.tree.on_error = self.on_app_command_error
 
-    # --- CHECK: IS OWNER? ---
-    # This function checks if the user running the command is YOU.
     def is_owner(self, interaction: discord.Interaction) -> bool:
         return interaction.user.id == config.OWNER_ID
 
     # ====================================================
-    # 1. SYNC COMMAND (Text Command)
+    # 1. SYNC COMMAND (Text Command: !sync)
     # ====================================================
-    # We use a standard text command (!sync) here because if Slash Commands 
-    # break, you need a backup way to fix them.
     @commands.command(name="sync")
     async def sync(self, ctx):
-        if ctx.author.id != config.OWNER_ID:
-            return
-        
+        if ctx.author.id != config.OWNER_ID: return
         msg = await ctx.send("🔄 Syncing commands...")
         try:
             synced = await self.bot.tree.sync()
@@ -38,29 +31,47 @@ class Owner(commands.Cog):
     # ====================================================
     owner_group = app_commands.Group(name="owner", description="Bot Owner Controls")
 
+    # --- NEW: STATUS COMMAND WITH DROPDOWN ---
     @owner_group.command(name="status", description="Change the bot's activity status")
-    async def change_status(self, interaction: discord.Interaction, activity_type: str, text: str):
-        if not self.is_owner(interaction): return await interaction.response.send_message("❌ You are not the owner.", ephemeral=True)
+    @app_commands.choices(activity_type=[
+        app_commands.Choice(name="Playing", value="playing"),
+        app_commands.Choice(name="Watching", value="watching"),
+        app_commands.Choice(name="Listening", value="listening"),
+        app_commands.Choice(name="Competing", value="competing"),
+        app_commands.Choice(name="Streaming", value="streaming")
+    ])
+    @app_commands.describe(text="The text to display (e.g. Minecraft)", url="Twitch URL (Required ONLY for Streaming)")
+    async def change_status(self, interaction: discord.Interaction, activity_type: app_commands.Choice[str], text: str, url: str = None):
+        if not self.is_owner(interaction): 
+            return await interaction.response.send_message("❌ You are not the owner.", ephemeral=True)
 
-        # Map string to Discord ActivityType
-        types = {
-            "playing": discord.ActivityType.playing,
-            "watching": discord.ActivityType.watching,
-            "listening": discord.ActivityType.listening,
-            "competing": discord.ActivityType.competing
-        }
-        
-        act = types.get(activity_type.lower(), discord.ActivityType.playing)
-        await self.bot.change_presence(activity=discord.Activity(type=act, name=text))
-        await interaction.response.send_message(f"✅ Status changed to: **{activity_type.capitalize()} {text}**", ephemeral=True)
+        act_value = activity_type.value
+
+        # Handle Streaming separately because it needs a URL
+        if act_value == "streaming":
+            if not url:
+                # Default URL if none provided (required for the Purple Dot to work)
+                url = "https://www.twitch.tv/discord"
+            activity = discord.Streaming(name=text, url=url)
+        else:
+            # Handle standard activities
+            type_map = {
+                "playing": discord.ActivityType.playing,
+                "watching": discord.ActivityType.watching,
+                "listening": discord.ActivityType.listening,
+                "competing": discord.ActivityType.competing
+            }
+            activity = discord.Activity(type=type_map[act_value], name=text)
+
+        await self.bot.change_presence(activity=activity)
+        await interaction.response.send_message(f"✅ Status updated: **{activity_type.name} {text}**", ephemeral=True)
+
 
     @owner_group.command(name="servers", description="List top 10 servers by member count")
     async def servers(self, interaction: discord.Interaction):
         if not self.is_owner(interaction): return await interaction.response.send_message("❌ You are not the owner.", ephemeral=True)
 
-        # Sort guilds by member count
         guilds = sorted(self.bot.guilds, key=lambda g: g.member_count, reverse=True)
-        
         desc = ""
         for i, g in enumerate(guilds[:10], 1):
             desc += f"**{i}. {g.name}**\n👤 {g.member_count} Members | 🆔 `{g.id}`\n\n"
@@ -74,43 +85,35 @@ class Owner(commands.Cog):
 
         try:
             guild = self.bot.get_guild(int(server_id))
-            if not guild:
-                return await interaction.response.send_message("❌ Server not found.", ephemeral=True)
-            
+            if not guild: return await interaction.response.send_message("❌ Server not found.", ephemeral=True)
             await guild.leave()
             await interaction.response.send_message(f"✅ Left server **{guild.name}**.", ephemeral=True)
         except Exception as e:
             await interaction.response.send_message(f"❌ Error: {e}", ephemeral=True)
 
     # ====================================================
-    # 3. SYSTEM LOGGING (Joins, Leaves, Errors)
+    # 3. SYSTEM LOGGING
     # ====================================================
     def get_log_channel(self):
         if hasattr(config, 'BOT_LOG_CHANNEL'):
             return self.bot.get_channel(config.BOT_LOG_CHANNEL)
         return None
 
-    # Log Errors
     async def on_app_command_error(self, interaction: discord.Interaction, error: app_commands.AppCommandError):
-        # Notify User
         if not interaction.response.is_done():
             await interaction.response.send_message("❌ An error occurred.", ephemeral=True)
 
-        # Log to Channel
         channel = self.get_log_channel()
         if channel:
             embed = discord.Embed(title="⚠️ Bot Error", color=discord.Color.red(), timestamp=datetime.datetime.now())
             embed.add_field(name="Command", value=f"/{interaction.command.name}" if interaction.command else "Unknown")
             embed.add_field(name="User", value=f"{interaction.user.name}")
-            
-            # Traceback (Shortened)
             error_msg = "".join(traceback.format_exception(type(error), error, error.__traceback__))
             embed.description = f"```py\n{error_msg[:1000]}```"
             await channel.send(embed=embed)
         else:
             print(f"Error: {error}")
 
-    # Log Join
     @commands.Cog.listener()
     async def on_guild_join(self, guild):
         channel = self.get_log_channel()
@@ -122,7 +125,6 @@ class Owner(commands.Cog):
             embed.add_field(name="Owner", value=f"{guild.owner.name} ({guild.owner_id})")
             await channel.send(embed=embed)
 
-    # Log Leave
     @commands.Cog.listener()
     async def on_guild_remove(self, guild):
         channel = self.get_log_channel()
