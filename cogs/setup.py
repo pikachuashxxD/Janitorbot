@@ -1,8 +1,7 @@
 import discord
-from discord import app_commands
 from discord.ext import commands
+from discord import app_commands
 from utils.database import update_config
-import config
 
 class Setup(commands.Cog):
     def __init__(self, bot):
@@ -11,16 +10,18 @@ class Setup(commands.Cog):
     setup_group = app_commands.Group(name="setup", description="Configure the bot")
 
     # ====================================================
-    # 1. LOGS SETUP (Merged Command)
+    # 1. LOGS SETUP (Now with ROLES option)
     # ====================================================
-    @setup_group.command(name="logs", description="Set up all log channels in one command")
+    @setup_group.command(name="logs", description="Set up all log channels")
     @app_commands.describe(
         join="Channel for Member Join logs",
         leave="Channel for Member Leave logs",
         voice="Channel for Voice Activity (Join/Leave/Move)",
         delete="Channel for Deleted Messages",
         edit="Channel for Edited Messages",
-        mod="Channel for Mod Actions (Kick/Ban/Timeout)"
+        mod="Channel for Mod Actions (Kick/Ban/Timeout)",
+        profile="Channel for Profile Changes (Avatar/Nickname)",
+        roles="Channel for Role Updates (Added/Removed)"      # <--- NEW OPTION
     )
     async def logs(
         self, 
@@ -30,52 +31,65 @@ class Setup(commands.Cog):
         voice: discord.TextChannel = None,
         delete: discord.TextChannel = None,
         edit: discord.TextChannel = None,
-        mod: discord.TextChannel = None
+        mod: discord.TextChannel = None,
+        profile: discord.TextChannel = None,
+        roles: discord.TextChannel = None                 # <--- NEW ARGUMENT
     ):
-        """
-        Set multiple log channels at once. You only need to select the ones you want to change.
-        """
-        changes = []
+        data = {}
+        msg_parts = []
 
         if join:
-            update_config(interaction.guild_id, "log_join_id", join.id)
-            changes.append(f"✅ **Join Logs:** {join.mention}")
-        
+            data["log_join_id"] = join.id
+            msg_parts.append(f"✅ **Join Logs:** {join.mention}")
         if leave:
-            update_config(interaction.guild_id, "log_leave_id", leave.id)
-            changes.append(f"✅ **Leave Logs:** {leave.mention}")
-
+            data["log_leave_id"] = leave.id
+            msg_parts.append(f"✅ **Leave Logs:** {leave.mention}")
         if voice:
-            update_config(interaction.guild_id, "log_voice_id", voice.id)
-            changes.append(f"✅ **Voice Logs:** {voice.mention}")
-
+            data["log_voice_id"] = voice.id
+            msg_parts.append(f"✅ **Voice Logs:** {voice.mention}")
         if delete:
-            update_config(interaction.guild_id, "log_delete_id", delete.id)
-            changes.append(f"✅ **Delete Logs:** {delete.mention}")
-
+            data["log_delete_id"] = delete.id
+            msg_parts.append(f"✅ **Delete Logs:** {delete.mention}")
         if edit:
-            update_config(interaction.guild_id, "log_edit_id", edit.id)
-            changes.append(f"✅ **Edit Logs:** {edit.mention}")
-
+            data["log_edit_id"] = edit.id
+            msg_parts.append(f"✅ **Edit Logs:** {edit.mention}")
         if mod:
-            update_config(interaction.guild_id, "log_mod_id", mod.id)
-            changes.append(f"✅ **Mod Logs:** {mod.mention}")
+            data["log_mod_id"] = mod.id
+            msg_parts.append(f"✅ **Mod Logs:** {mod.mention}")
+        if profile:
+            data["log_profile_id"] = profile.id
+            msg_parts.append(f"✅ **Profile Logs:** {profile.mention}")
+        if roles:                                         # <--- NEW LOGIC
+            data["log_role_id"] = roles.id
+            msg_parts.append(f"✅ **Role Logs:** {roles.mention}")
 
-        if changes:
-            await interaction.response.send_message("\n".join(changes))
+        if data:
+            update_config(interaction.guild_id, data)
+            await interaction.response.send_message("\n".join(msg_parts))
         else:
             await interaction.response.send_message("❌ You didn't select any channels to setup!", ephemeral=True)
 
     # ====================================================
-    # 2. WELCOME SETUP (Simple Channel Selection)
+    # 2. CLAN SETUP
+    # ====================================================
+    @setup_group.command(name="clans", description="Configure the Clan System")
+    @app_commands.describe(role="The role required to create clans (e.g. @VIP)")
+    async def clans(self, interaction: discord.Interaction, role: discord.Role):
+        data = {"clan_role_id": role.id}
+        update_config(interaction.guild_id, data)
+        await interaction.response.send_message(f"✅ **Clan System Configured!**\nUsers need the {role.mention} role to create clans.")
+
+    # ====================================================
+    # 3. WELCOME SETUP
     # ====================================================
     @setup_group.command(name="welcome", description="Set channel for Welcome Cards")
     async def welcome(self, interaction: discord.Interaction, channel: discord.TextChannel):
-        update_config(interaction.guild_id, "welcome_channel_id", channel.id)
+        data = {"welcome_channel_id": channel.id}
+        update_config(interaction.guild_id, data)
         await interaction.response.send_message(f"✅ **Welcome Cards** set to {channel.mention}")
 
     # ====================================================
-    # 3. STREAMER SETUP (Merged Command)
+    # 4. STREAMER SETUP
     # ====================================================
     @setup_group.command(name="stream", description="Configure Streamer Alerts")
     @app_commands.describe(
@@ -90,25 +104,22 @@ class Setup(commands.Cog):
         channel_normal: discord.TextChannel = None, 
         channel_owner: discord.TextChannel = None
     ):
-        """
-        Configure all streamer settings in one command.
-        """
-        changes = []
+        data = {}
+        msg_parts = []
 
         if role:
-            update_config(interaction.guild_id, "streamer_role_id", role.id)
-            changes.append(f"✅ **Streamer Role:** {role.mention}")
-
+            data["streamer_role_id"] = role.id
+            msg_parts.append(f"✅ **Streamer Role:** {role.mention}")
         if channel_normal:
-            update_config(interaction.guild_id, "stream_channel_normal", channel_normal.id)
-            changes.append(f"✅ **Normal Alerts:** {channel_normal.mention}")
-
+            data["stream_channel_normal"] = channel_normal.id
+            msg_parts.append(f"✅ **Normal Alerts:** {channel_normal.mention}")
         if channel_owner:
-            update_config(interaction.guild_id, "stream_channel_owner", channel_owner.id)
-            changes.append(f"✅ **Owner Alerts:** {channel_owner.mention}")
+            data["stream_channel_owner"] = channel_owner.id
+            msg_parts.append(f"✅ **Owner Alerts:** {channel_owner.mention}")
 
-        if changes:
-            await interaction.response.send_message("\n".join(changes))
+        if data:
+            update_config(interaction.guild_id, data)
+            await interaction.response.send_message("\n".join(msg_parts))
         else:
             await interaction.response.send_message("❌ You didn't select any options to update!", ephemeral=True)
 
