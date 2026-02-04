@@ -10,7 +10,7 @@ class Setup(commands.Cog):
     setup_group = app_commands.Group(name="setup", description="Configure the bot")
 
     # ====================================================
-    # 1. LOGS SETUP (Fixed Update Logic)
+    # 1. LOGS SETUP (Added 'nickname' and 'avatar')
     # ====================================================
     @setup_group.command(name="logs", description="Set up all log channels")
     @app_commands.describe(
@@ -20,7 +20,8 @@ class Setup(commands.Cog):
         delete="Channel for Deleted Messages",
         edit="Channel for Edited Messages",
         mod="Channel for Mod Actions (Kick/Ban/Timeout)",
-        profile="Channel for Profile Changes (Avatar/Nickname)",
+        avatar="Channel for Profile Picture Changes",     # <--- NEW
+        nickname="Channel for Nickname Changes",          # <--- NEW
         roles="Channel for Role Updates (Added/Removed)"
     )
     async def logs(
@@ -32,7 +33,8 @@ class Setup(commands.Cog):
         delete: discord.TextChannel = None,
         edit: discord.TextChannel = None,
         mod: discord.TextChannel = None,
-        profile: discord.TextChannel = None,
+        avatar: discord.TextChannel = None,    # <--- NEW ARGUMENT
+        nickname: discord.TextChannel = None,  # <--- NEW ARGUMENT
         roles: discord.TextChannel = None
     ):
         data = {}
@@ -56,18 +58,21 @@ class Setup(commands.Cog):
         if mod:
             data["log_mod_id"] = mod.id
             msg_parts.append(f"✅ **Mod Logs:** {mod.mention}")
-        if profile:
-            data["log_profile_id"] = profile.id
-            msg_parts.append(f"✅ **Profile Logs:** {profile.mention}")
+        
+        # --- NEW SEPARATE OPTIONS ---
+        if avatar:
+            data["log_avatar_id"] = avatar.id
+            msg_parts.append(f"✅ **Avatar Logs:** {avatar.mention}")
+        if nickname:
+            data["log_nickname_id"] = nickname.id
+            msg_parts.append(f"✅ **Nickname Logs:** {nickname.mention}")
         if roles:
             data["log_role_id"] = roles.id
             msg_parts.append(f"✅ **Role Logs:** {roles.mention}")
 
         if data:
-            # FIX: Loop through the dictionary and update one by one
             for key, value in data.items():
                 update_config(interaction.guild_id, key, value)
-            
             await interaction.response.send_message("\n".join(msg_parts))
         else:
             await interaction.response.send_message("❌ You didn't select any channels to setup!", ephemeral=True)
@@ -78,7 +83,6 @@ class Setup(commands.Cog):
     @setup_group.command(name="clans", description="Configure the Clan System")
     @app_commands.describe(role="The role required to create clans (e.g. @VIP)")
     async def clans(self, interaction: discord.Interaction, role: discord.Role):
-        # FIX: Send key and value directly
         update_config(interaction.guild_id, "clan_role_id", role.id)
         await interaction.response.send_message(f"✅ **Clan System Configured!**\nUsers need the {role.mention} role to create clans.")
 
@@ -87,7 +91,6 @@ class Setup(commands.Cog):
     # ====================================================
     @setup_group.command(name="welcome", description="Set channel for Welcome Cards")
     async def welcome(self, interaction: discord.Interaction, channel: discord.TextChannel):
-        # FIX: Send key and value directly
         update_config(interaction.guild_id, "welcome_channel_id", channel.id)
         await interaction.response.send_message(f"✅ **Welcome Cards** set to {channel.mention}")
 
@@ -121,10 +124,8 @@ class Setup(commands.Cog):
             msg_parts.append(f"✅ **Owner Alerts:** {channel_owner.mention}")
 
         if data:
-            # FIX: Loop through the dictionary and update one by one
             for key, value in data.items():
                 update_config(interaction.guild_id, key, value)
-                
             await interaction.response.send_message("\n".join(msg_parts))
         else:
             await interaction.response.send_message("❌ You didn't select any options to update!", ephemeral=True)
