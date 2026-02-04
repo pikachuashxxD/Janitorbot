@@ -27,13 +27,14 @@ class UserUpdates(commands.Cog):
 
     @commands.Cog.listener()
     async def on_member_update(self, before, after):
+        # Skip timeout updates (handled by logging.py)
         if before.timed_out_until != after.timed_out_until:
             return
 
         now = discord.utils.utcnow()
 
         # ====================================================
-        # 1. NICKNAME CHANGES (log_nickname_id)
+        # 1. NICKNAME CHANGES
         # ====================================================
         if before.nick != after.nick:
             channel = self.get_log_channel(before.guild, "log_nickname_id")
@@ -54,9 +55,12 @@ class UserUpdates(commands.Cog):
                 await channel.send(embed=embed)
 
         # ====================================================
-        # 2. PROFILE PICTURE CHANGES (log_avatar_id)
+        # 2. PROFILE PICTURE CHANGES (Fixed)
         # ====================================================
-        if before.display_avatar != after.display_avatar:
+        # We compare the URL strings now. This is safer than comparing objects.
+        if before.display_avatar.url != after.display_avatar.url:
+            print(f"[DEBUG] Avatar change detected for {after.name}") # Check your console for this!
+            
             channel = self.get_log_channel(before.guild, "log_avatar_id")
             if channel:
                 embed = discord.Embed(
@@ -66,14 +70,18 @@ class UserUpdates(commands.Cog):
                     timestamp=now
                 )
                 embed.set_author(name=after.name, icon_url=after.display_avatar.url)
+                
+                # Thumbnail = Old Pic
                 embed.set_thumbnail(url=before.display_avatar.url)
+                
+                # Big Image = New Pic
                 embed.set_image(url=after.display_avatar.url)
                 
                 embed.set_footer(text=f"ID: {after.id}")
                 await channel.send(embed=embed)
 
         # ====================================================
-        # 3. ROLE CHANGES (log_role_id)
+        # 3. ROLE CHANGES
         # ====================================================
         if before.roles != after.roles:
             channel = self.get_log_channel(before.guild, "log_role_id")
