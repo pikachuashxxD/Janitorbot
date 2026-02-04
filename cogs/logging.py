@@ -7,14 +7,9 @@ from utils.database import get_config
 class Logging(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        # Keeps track of when users join VC to calculate duration later
         self.voice_sessions = {}
 
     def get_log_channel(self, guild, key):
-        """
-        Fetches the specific log channel for an action (e.g., 'log_join_id').
-        If that specific channel isn't set, falls back to the main 'log_channel'.
-        """
         data = get_config(guild.id)
         channel_id = data.get(key)
         if not channel_id:
@@ -24,7 +19,6 @@ class Logging(commands.Cog):
         return None
 
     def format_time_ago(self, dt):
-        """Calculates the time difference string."""
         if not dt: return "Unknown"
         now = datetime.datetime.now(datetime.timezone.utc)
         delta = now - dt
@@ -35,11 +29,11 @@ class Logging(commands.Cog):
         minutes = (seconds % 3600) // 60
         secs = seconds % 60
 
-        if days > 365: return f"{days // 365} years ago"
-        if days > 0: return f"{days} days ago"
-        if hours > 0: return f"{hours} hours ago"
-        if minutes > 0: return f"{minutes} minutes ago"
-        return f"{secs} seconds ago"
+        if days > 365: return f"{days // 365} years"
+        if days > 0: return f"{days} days"
+        if hours > 0: return f"{hours} hours"
+        if minutes > 0: return f"{minutes} minutes"
+        return f"{secs} seconds"
 
     # ====================================================
     # 1. JOIN LOGS
@@ -57,7 +51,7 @@ class Logging(commands.Cog):
             
             account_age = self.format_time_ago(member.created_at)
             embed.add_field(name="User", value=member.name, inline=True)
-            embed.add_field(name="Account Created", value=f"{account_age}\n{discord.utils.format_dt(member.created_at, 'R')}", inline=True)
+            embed.add_field(name="Account Created", value=f"{account_age} ago\n{discord.utils.format_dt(member.created_at, 'R')}", inline=True)
             
             embed.set_thumbnail(url=member.display_avatar.url)
             embed.set_footer(text=f"Member Count: {member.guild.member_count} | User ID: {member.id}")
@@ -74,11 +68,9 @@ class Logging(commands.Cog):
         kicker = None
         reason = "No reason provided"
 
-        # Check Audit Logs to see if the user was Kicked
         if guild.me.guild_permissions.view_audit_log:
             async for entry in guild.audit_logs(limit=1, action=discord.AuditLogAction.kick):
                 if entry.target.id == member.id:
-                    # If kick happened in the last 10 seconds, assume it corresponds to this leave event
                     if (now - entry.created_at).total_seconds() < 10:
                         is_kick = True
                         kicker = entry.user
@@ -86,11 +78,12 @@ class Logging(commands.Cog):
                     break
         
         if is_kick:
-            # --- KICK LOG (Red) ---
             channel = self.get_log_channel(guild, "log_mod_id")
             if channel:
+                # Uses config.EMOJIS['boot'] if you have one, or a fallback emoji
+                boot_emoji = config.EMOJIS.get('boot', '👢')
                 embed = discord.Embed(
-                    title="👢 Member Kicked", 
+                    title=f"{boot_emoji} Member Kicked", 
                     color=discord.Color.red(),
                     timestamp=now
                 )
@@ -100,31 +93,25 @@ class Logging(commands.Cog):
                 embed.set_footer(text=f"User ID: {member.id}")
                 await channel.send(embed=embed)
         else:
-            # --- LEAVE LOG (Gold/Yellow - Matches Screenshot) ---
             channel = self.get_log_channel(guild, "log_leave_id")
             if channel:
-                # Calculate how long they stayed
                 time_stayed = self.format_time_ago(member.joined_at)
-                
-                # List roles (excluding @everyone)
                 roles = [r.mention for r in member.roles if r.name != "@everyone"]
                 roles_str = " ".join(roles) if roles else "None"
 
                 embed = discord.Embed(
                     description=f"{member.mention} joined {time_stayed} ago", 
-                    color=discord.Color.gold(), # Matches the screenshot color
+                    color=discord.Color.gold(),
                     timestamp=now
                 )
                 
-                # Uses the USER'S Profile Picture
                 embed.set_author(name="Member left", icon_url=member.display_avatar.url)
-                
                 embed.add_field(name="Roles:", value=roles_str, inline=False)
                 embed.set_footer(text=f"ID: {member.id}")
                 await channel.send(embed=embed)
 
     # ====================================================
-    # 3. VOICE LOGS (Duration Tracking)
+    # 3. VOICE LOGS (Now using Animated Emojis)
     # ====================================================
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
@@ -136,19 +123,21 @@ class Logging(commands.Cog):
         # JOIN
         if before.channel is None and after.channel is not None:
             self.voice_sessions[member.id] = now
+            emoji = config.EMOJIS.get("voice_join", "🎤")
+            
             embed = discord.Embed(
-                description=f"🎤 **{member.name}** joined **{after.channel.name}**",
+                description=f"{emoji} **{member.name}** joined **{after.channel.name}**",
                 color=discord.Color.green(),
                 timestamp=now
             )
             embed.set_author(name="Voice Join", icon_url=member.display_avatar.url)
+            embed.set_thumbnail(url=member.display_avatar.url)
             embed.set_footer(text=f"ID: {member.id}")
             await channel.send(embed=embed)
 
         # LEAVE
         elif before.channel is not None and after.channel is None:
             duration_str = "0s"
-            # Calculate duration
             if member.id in self.voice_sessions:
                 start_time = self.voice_sessions.pop(member.id)
                 duration = now - start_time
@@ -157,29 +146,35 @@ class Logging(commands.Cog):
                 minutes, seconds = divmod(remainder, 60)
                 duration_str = f"{hours}h {minutes}m {seconds}s"
 
+            emoji = config.EMOJIS.get("voice_leave", "👋")
+            
             embed = discord.Embed(
-                description=f"👋 **{member.name}** left **{before.channel.name}**",
+                description=f"{emoji} **{member.name}** left **{before.channel.name}**",
                 color=discord.Color.red(),
                 timestamp=now
             )
             embed.set_author(name="Voice Leave", icon_url=member.display_avatar.url)
+            embed.set_thumbnail(url=member.display_avatar.url)
             embed.add_field(name="Duration", value=duration_str, inline=False)
             embed.set_footer(text=f"ID: {member.id}")
             await channel.send(embed=embed)
 
         # MOVED
         elif before.channel is not None and after.channel is not None and before.channel != after.channel:
+            emoji = config.EMOJIS.get("voice_move", "➡️")
+            
             embed = discord.Embed(
-                description=f"➡️ **{member.name}** moved from **{before.channel.name}** to **{after.channel.name}**",
+                description=f"{emoji} **{member.name}** moved from **{before.channel.name}** to **{after.channel.name}**",
                 color=discord.Color.gold(),
                 timestamp=now
             )
             embed.set_author(name="Voice Move", icon_url=member.display_avatar.url)
+            embed.set_thumbnail(url=member.display_avatar.url)
             embed.set_footer(text=f"ID: {member.id}")
             await channel.send(embed=embed)
 
     # ====================================================
-    # 4. DELETE LOGS
+    # 4. DELETE LOGS (Now using Animated Emojis)
     # ====================================================
     @commands.Cog.listener()
     async def on_message_delete(self, message):
@@ -187,8 +182,10 @@ class Logging(commands.Cog):
         channel = self.get_log_channel(message.guild, "log_delete_id")
         
         if channel:
+            emoji = config.EMOJIS.get("trash", "🗑️")
+            
             embed = discord.Embed(
-                title="🗑️ Message Deleted", 
+                title=f"{emoji} Message Deleted", 
                 color=discord.Color.red(),
                 timestamp=discord.utils.utcnow()
             )
@@ -200,7 +197,7 @@ class Logging(commands.Cog):
             await channel.send(embed=embed)
 
     # ====================================================
-    # 5. EDIT LOGS
+    # 5. EDIT LOGS (Now using Animated Emojis)
     # ====================================================
     @commands.Cog.listener()
     async def on_message_edit(self, before, after):
@@ -208,8 +205,10 @@ class Logging(commands.Cog):
         channel = self.get_log_channel(before.guild, "log_edit_id")
         
         if channel:
+            emoji = config.EMOJIS.get("edit", "✏️")
+            
             embed = discord.Embed(
-                title="✏️ Message Edited", 
+                title=f"{emoji} Message Edited", 
                 color=discord.Color.blue(),
                 timestamp=discord.utils.utcnow()
             )
@@ -225,7 +224,6 @@ class Logging(commands.Cog):
     # ====================================================
     @commands.Cog.listener()
     async def on_member_update(self, before, after):
-        # Check if Timeout was added
         if not before.timed_out_until and after.timed_out_until:
             channel = self.get_log_channel(after.guild, "log_mod_id")
             
@@ -238,9 +236,12 @@ class Logging(commands.Cog):
                             moderator = entry.user.mention
                             reason = entry.reason or reason
                             break
+                
+                # Using a fallback hourglass emoji if 'timeout' isn't in your config yet
+                emoji = config.EMOJIS.get("timeout", "⏳")
 
                 embed = discord.Embed(
-                    title="⏳ Timeout Issued", 
+                    title=f"{emoji} Timeout Issued", 
                     color=discord.Color.gold(),
                     timestamp=discord.utils.utcnow()
                 )
