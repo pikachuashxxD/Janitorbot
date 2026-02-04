@@ -10,7 +10,7 @@ class Setup(commands.Cog):
     setup_group = app_commands.Group(name="setup", description="Configure the bot")
 
     # ====================================================
-    # 1. LOGS SETUP (Now with ROLES option)
+    # 1. LOGS SETUP (Fixed Update Logic)
     # ====================================================
     @setup_group.command(name="logs", description="Set up all log channels")
     @app_commands.describe(
@@ -21,7 +21,7 @@ class Setup(commands.Cog):
         edit="Channel for Edited Messages",
         mod="Channel for Mod Actions (Kick/Ban/Timeout)",
         profile="Channel for Profile Changes (Avatar/Nickname)",
-        roles="Channel for Role Updates (Added/Removed)"      # <--- NEW OPTION
+        roles="Channel for Role Updates (Added/Removed)"
     )
     async def logs(
         self, 
@@ -33,7 +33,7 @@ class Setup(commands.Cog):
         edit: discord.TextChannel = None,
         mod: discord.TextChannel = None,
         profile: discord.TextChannel = None,
-        roles: discord.TextChannel = None                 # <--- NEW ARGUMENT
+        roles: discord.TextChannel = None
     ):
         data = {}
         msg_parts = []
@@ -59,12 +59,15 @@ class Setup(commands.Cog):
         if profile:
             data["log_profile_id"] = profile.id
             msg_parts.append(f"✅ **Profile Logs:** {profile.mention}")
-        if roles:                                         # <--- NEW LOGIC
+        if roles:
             data["log_role_id"] = roles.id
             msg_parts.append(f"✅ **Role Logs:** {roles.mention}")
 
         if data:
-            update_config(interaction.guild_id, data)
+            # FIX: Loop through the dictionary and update one by one
+            for key, value in data.items():
+                update_config(interaction.guild_id, key, value)
+            
             await interaction.response.send_message("\n".join(msg_parts))
         else:
             await interaction.response.send_message("❌ You didn't select any channels to setup!", ephemeral=True)
@@ -75,8 +78,8 @@ class Setup(commands.Cog):
     @setup_group.command(name="clans", description="Configure the Clan System")
     @app_commands.describe(role="The role required to create clans (e.g. @VIP)")
     async def clans(self, interaction: discord.Interaction, role: discord.Role):
-        data = {"clan_role_id": role.id}
-        update_config(interaction.guild_id, data)
+        # FIX: Send key and value directly
+        update_config(interaction.guild_id, "clan_role_id", role.id)
         await interaction.response.send_message(f"✅ **Clan System Configured!**\nUsers need the {role.mention} role to create clans.")
 
     # ====================================================
@@ -84,8 +87,8 @@ class Setup(commands.Cog):
     # ====================================================
     @setup_group.command(name="welcome", description="Set channel for Welcome Cards")
     async def welcome(self, interaction: discord.Interaction, channel: discord.TextChannel):
-        data = {"welcome_channel_id": channel.id}
-        update_config(interaction.guild_id, data)
+        # FIX: Send key and value directly
+        update_config(interaction.guild_id, "welcome_channel_id", channel.id)
         await interaction.response.send_message(f"✅ **Welcome Cards** set to {channel.mention}")
 
     # ====================================================
@@ -118,7 +121,10 @@ class Setup(commands.Cog):
             msg_parts.append(f"✅ **Owner Alerts:** {channel_owner.mention}")
 
         if data:
-            update_config(interaction.guild_id, data)
+            # FIX: Loop through the dictionary and update one by one
+            for key, value in data.items():
+                update_config(interaction.guild_id, key, value)
+                
             await interaction.response.send_message("\n".join(msg_parts))
         else:
             await interaction.response.send_message("❌ You didn't select any options to update!", ephemeral=True)
