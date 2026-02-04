@@ -11,7 +11,7 @@ from utils.database import get_config, update_config
 # ====================================================
 # 1. Top Right Small Logo (Thumbnail)
 # Set to None to use the Bot's Avatar automatically.
-THUMBNAIL_URL = None 
+THUMBNAIL_URL = "https://media.discordapp.net/attachments/973160783196323860/1468515977112195259/Skirichu_gif.gif?ex=69844d94&is=6982fc14&hm=798a17ad820646668a8e186925fadf2c2ac520d65bf61dadc9acba758e902d2c&=&width=320&height=320" 
 # Example: "https://i.imgur.com/SmallLogo.png"
 
 # 2. Bottom Large Banner (Image)
