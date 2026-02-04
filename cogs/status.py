@@ -3,8 +3,22 @@ from discord.ext import commands, tasks
 from discord import app_commands
 import datetime
 import asyncio
-import config  # Importing config to access BOT_LOG_CHANNEL
+import config
 from utils.database import get_config, update_config
+
+# ====================================================
+# 🎨 CONFIGURATION: PASTE YOUR LINKS HERE
+# ====================================================
+# 1. Top Right Small Logo (Thumbnail)
+# Set to None to use the Bot's Avatar automatically.
+THUMBNAIL_URL = None 
+# Example: "https://i.imgur.com/SmallLogo.png"
+
+# 2. Bottom Large Banner (Image)
+# Set to None if you don't want a banner.
+BANNER_URL = "https://i.imgur.com/YourBanner.png" 
+# Example: "https://i.imgur.com/BigBanner.png"
+
 
 class BotStatus(commands.Cog):
     def __init__(self, bot):
@@ -17,9 +31,6 @@ class BotStatus(commands.Cog):
         self.update_status_task.cancel()
         asyncio.create_task(self.send_shutdown_log())
 
-    # ====================================================
-    # HELPER: Get Uptime String
-    # ====================================================
     def get_uptime(self):
         now = datetime.datetime.now(datetime.timezone.utc)
         delta = now - self.start_time
@@ -27,56 +38,59 @@ class BotStatus(commands.Cog):
         hours = delta.seconds // 3600
         minutes = (delta.seconds % 3600) // 60
         secs = delta.seconds % 60
-        # Format: 00:00:00 (or 1d 00:00:00 if days > 0)
         time_str = f"{hours:02}:{minutes:02}:{secs:02}"
         if days > 0:
             return f"{days}d {time_str}"
         return time_str
 
-    # ====================================================
-    # HELPER: Find the Bot Log Channel (Updated for your config)
-    # ====================================================
     def get_bot_log_channel(self):
-        # Uses the constant from your config.py, matching your owners.py logic
         if hasattr(config, 'BOT_LOG_CHANNEL'):
             return self.bot.get_channel(config.BOT_LOG_CHANNEL)
         return None
 
     # ====================================================
-    # 1. LIVE STATUS EMBED (REDESIGNED - Uncharted Style)
+    # 1. LIVE STATUS EMBED
     # ====================================================
     def create_status_embed(self):
         server_count = len(self.bot.guilds)
-        # Calculates total members across all servers
         member_count = sum(g.member_count for g in self.bot.guilds)
         uptime = self.get_uptime()
         latency = round(self.bot.latency * 1000)
         current_time = datetime.datetime.now().strftime("%H:%M:%S")
 
-        # Green color like the image
         embed = discord.Embed(
             title=self.bot.user.name,
             color=discord.Color.green()
         )
         
-        # Thumbnail in top right (Bot Avatar)
-        embed.set_thumbnail(url=self.bot.user.display_avatar.url)
+        # --- 1. SET THUMBNAIL (Top Right) ---
+        if THUMBNAIL_URL:
+            embed.set_thumbnail(url=THUMBNAIL_URL)
+        else:
+            embed.set_thumbnail(url=self.bot.user.display_avatar.url)
 
-        # Row 1: STATUS | MEMBERS | PING (In code blocks for the "black box" look)
+        # --- 2. SET BANNER (Bottom Large) ---
+        if BANNER_URL:
+            embed.set_image(url=BANNER_URL)
+
+        # --- DATA FIELDS ---
+        # Row 1: STATUS | SERVERS | PING
         embed.add_field(name="🟢 STATUS", value="```\nOnline\n```", inline=True)
-        embed.add_field(name="👥 MEMBERS", value=f"```\n{member_count}\n```", inline=True)
+        embed.add_field(name="🛡️ SERVERS", value=f"```\n{server_count}\n```", inline=True)
         embed.add_field(name="📶 PING", value=f"```\n{latency}ms\n```", inline=True)
 
-        # Row 2: UPTIME (Wide box)
+        # Row 2: MEMBERS
+        embed.add_field(name="👥 MEMBERS", value=f"```\n{member_count}\n```", inline=True)
+        
+        # Row 3: UPTIME
         embed.add_field(name="⏳ UPTIME", value=f"```\n{uptime}\n```", inline=False)
         
-        # Footer: Last Updated Time
         embed.set_footer(text=f"Last Updated: {current_time}")
         
         return embed
 
     # ====================================================
-    # 2. EVENTS: STARTUP & SHUTDOWN LOGS
+    # 2. EVENTS
     # ====================================================
     @commands.Cog.listener()
     async def on_ready(self):
@@ -111,7 +125,7 @@ class BotStatus(commands.Cog):
             await channel.send(embed=embed)
 
     # ====================================================
-    # 3. SETUP COMMAND (OWNER ONLY)
+    # 3. COMMANDS
     # ====================================================
     @app_commands.command(name="setup_status", description="Create a live updating status message")
     @app_commands.describe(channel="The channel for the live dashboard")
@@ -135,9 +149,6 @@ class BotStatus(commands.Cog):
         embed = self.create_status_embed()
         await interaction.response.send_message(embed=embed)
 
-    # ====================================================
-    # 4. BACKGROUND TASK
-    # ====================================================
     @tasks.loop(minutes=2)
     async def update_status_task(self):
         await self.bot.wait_until_ready()
@@ -153,7 +164,6 @@ class BotStatus(commands.Cog):
                     if channel:
                         try:
                             message = await channel.fetch_message(message_id)
-                            # Create new embed and edit the message
                             await message.edit(embed=self.create_status_embed())
                         except (discord.NotFound, discord.Forbidden):
                             update_config(guild.id, "status_message_id", None)
