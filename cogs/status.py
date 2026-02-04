@@ -16,7 +16,7 @@ THUMBNAIL_URL = "https://media.discordapp.net/attachments/973160783196323860/146
 
 # 2. Bottom Large Banner (Image)
 # Set to None if you don't want a banner.
-BANNER_URL = "None" 
+BANNER_URL = None
 # Example: "https://i.imgur.com/BigBanner.png"
 
 
