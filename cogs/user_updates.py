@@ -13,11 +13,8 @@ class UserUpdates(commands.Cog):
         Fallback: If specific key isn't set, try Main Log Channel.
         """
         data = get_config(guild.id)
-        
-        # 1. Try specific key (e.g. log_nickname_id)
         channel_id = data.get(key)
         
-        # 2. Fallback to MAIN log channel
         if not channel_id:
             channel_id = data.get("log_channel")
             
@@ -25,19 +22,20 @@ class UserUpdates(commands.Cog):
             return self.bot.get_channel(channel_id)
         return None
 
+    # ====================================================
+    # 1. SERVER-SPECIFIC UPDATES (Nicknames, Server Avatars, Roles)
+    # ====================================================
     @commands.Cog.listener()
     async def on_member_update(self, before, after):
-        # Skip timeout updates (handled by logging.py)
         if before.timed_out_until != after.timed_out_until:
             return
 
         now = discord.utils.utcnow()
+        guild = before.guild
 
-        # ====================================================
-        # 1. NICKNAME CHANGES
-        # ====================================================
+        # --- NICKNAME ---
         if before.nick != after.nick:
-            channel = self.get_log_channel(before.guild, "log_nickname_id")
+            channel = self.get_log_channel(guild, "log_nickname_id")
             if channel:
                 embed = discord.Embed(
                     title="🏷️ Nickname Changed",
@@ -54,42 +52,33 @@ class UserUpdates(commands.Cog):
                 embed.set_footer(text=f"ID: {after.id}")
                 await channel.send(embed=embed)
 
-        # ====================================================
-        # 2. PROFILE PICTURE CHANGES (Fixed)
-        # ====================================================
-        # We compare the URL strings now. This is safer than comparing objects.
-        if before.display_avatar.url != after.display_avatar.url:
-            print(f"[DEBUG] Avatar change detected for {after.name}") # Check your console for this!
-            
-            channel = self.get_log_channel(before.guild, "log_avatar_id")
+        # --- SERVER AVATAR ---
+        # This catches changes when a user uploads a specific "Server Profile" picture
+        if before.guild_avatar != after.guild_avatar:
+            channel = self.get_log_channel(guild, "log_avatar_id")
             if channel:
                 embed = discord.Embed(
-                    title="🖼️ Avatar Changed",
-                    description=f"{after.mention} updated their profile picture.",
+                    title="🖼️ Server Avatar Changed",
+                    description=f"{after.mention} updated their server profile picture.",
                     color=discord.Color.gold(),
                     timestamp=now
                 )
                 embed.set_author(name=after.name, icon_url=after.display_avatar.url)
                 
-                # Thumbnail = Old Pic
+                # Use display_avatar to show what is currently visible
                 embed.set_thumbnail(url=before.display_avatar.url)
-                
-                # Big Image = New Pic
                 embed.set_image(url=after.display_avatar.url)
                 
                 embed.set_footer(text=f"ID: {after.id}")
                 await channel.send(embed=embed)
 
-        # ====================================================
-        # 3. ROLE CHANGES
-        # ====================================================
+        # --- ROLES ---
         if before.roles != after.roles:
-            channel = self.get_log_channel(before.guild, "log_role_id")
+            channel = self.get_log_channel(guild, "log_role_id")
             if channel:
                 before_roles = set(before.roles)
                 after_roles = set(after.roles)
 
-                # Added
                 added_roles = after_roles - before_roles
                 if added_roles:
                     roles_str = ", ".join([r.mention for r in added_roles])
@@ -103,7 +92,6 @@ class UserUpdates(commands.Cog):
                     embed.set_footer(text=f"ID: {after.id}")
                     await channel.send(embed=embed)
 
-                # Removed
                 removed_roles = before_roles - after_roles
                 if removed_roles:
                     roles_str = ", ".join([r.mention for r in removed_roles])
@@ -116,6 +104,41 @@ class UserUpdates(commands.Cog):
                     embed.set_author(name=after.name, icon_url=after.display_avatar.url)
                     embed.set_footer(text=f"ID: {after.id}")
                     await channel.send(embed=embed)
+
+    # ====================================================
+    # 2. GLOBAL UPDATES (Main Profile Picture)
+    # ====================================================
+    @commands.Cog.listener()
+    async def on_user_update(self, before, after):
+        # Check if the global avatar changed
+        if before.avatar != after.avatar:
+            now = discord.utils.utcnow()
+            
+            # Since 'User' updates are global, we need to check which shared servers config logging for this
+            for guild in self.bot.guilds:
+                # Check if this user is in the guild
+                member = guild.get_member(after.id)
+                if member:
+                    # Check if this specific guild has avatar logging enabled
+                    channel = self.get_log_channel(guild, "log_avatar_id")
+                    if channel:
+                        embed = discord.Embed(
+                            title="🖼️ Global Avatar Changed",
+                            description=f"{member.mention} updated their global profile picture.",
+                            color=discord.Color.gold(),
+                            timestamp=now
+                        )
+                        embed.set_author(name=member.name, icon_url=member.display_avatar.url)
+                        
+                        # Handle cases where before/after might be None (default avatar)
+                        old_url = before.avatar.url if before.avatar else before.default_avatar.url
+                        new_url = after.avatar.url if after.avatar else after.default_avatar.url
+
+                        embed.set_thumbnail(url=old_url)
+                        embed.set_image(url=new_url)
+                        
+                        embed.set_footer(text=f"ID: {member.id}")
+                        await channel.send(embed=embed)
 
 async def setup(bot):
     await bot.add_cog(UserUpdates(bot))
